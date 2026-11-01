@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Project 369 · Restaurant Expenses & Pricing</title>
+<style>
+:root{--bg:#faf8f5;--card:#fff;--text:#1f1b16;--muted:#6f675d;--line:#e6dfd5;--accent:#c2410c;--accent-t:#fff;--bar:#f1c9a8;--ok:#15803d;--bad:#b91c1c;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17140f;--card:#211d17;--text:#f3ede4;--muted:#a39a8c;--line:#383128;--accent:#f97316;--accent-t:#1a1004;--bar:#7c3a12;--ok:#4ade80;--bad:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17140f;--card:#211d17;--text:#f3ede4;--muted:#a39a8c;--line:#383128;--accent:#f97316;--accent-t:#1a1004;--bar:#7c3a12;--ok:#4ade80;--bad:#f87171;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:800px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;margin:0}
+.sub{color:var(--muted);margin:2px 0 14px;font-size:.9rem}
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{background:var(--card);color:var(--text);border:1px solid var(--line)}
+.tabs button.on{background:var(--accent);color:var(--accent-t);border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stat small{color:var(--muted);display:block}
+.stat b{font-size:1.4rem}
+form,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);width:100%}
+button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:var(--accent-t);font-weight:600}
+button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weight:400}
+.full{grid-column:1/-1}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.m{color:var(--muted);font-size:.85rem}
+.amt{font-weight:700;white-space:nowrap}
+.bar{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:.9rem}
+.bar .n{width:110px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .t{flex:1;background:var(--line);border-radius:6px;height:12px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--bar);border-radius:6px}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.head h2{font-size:1.05rem;margin:0}
+.empty{color:var(--muted);text-align:center;padding:16px 0}
+.tag{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+.hide{display:none}a{color:var(--accent)}
+.note{font-size:.85rem;color:var(--muted);margin:8px 0 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>🍽️ Restaurant Expenses & Pricing</h1>
+  <p class="sub">Project 369 · 4 restaurants · <span id="mode">saved in this browser only</span></p>
+  <div class="tabs" id="tabs">
+    <button data-t="exp" class="on">Expenses</button>
+    <button data-t="menu">Menu pricing</button>
+    <button data-t="ov">Overview</button>
+  </div>
+
+  <section id="exp">
+    <div class="card">
+      <form id="ef">
+        <label>Restaurant<select id="erest"></select></label>
+        <label>Date<input type="date" id="edate" required></label>
+        <label>Amount ($)<input type="number" id="eamt" min="0" step="0.01" required></label>
+        <label>Category
+          <select id="ecat"><option>Ingredients</option><option>Labor</option><option>Rent</option><option>Utilities</option><option>Supplies</option><option>Marketing</option><option>Other</option></select>
+        </label>
+        <label class="full">Vendor / note<input type="text" id="enote" placeholder="e.g. Sysco order"></label>
+        <label class="full" id="rcwrap">Receipt photo or PDF (optional)<input type="file" id="ercpt" accept="image/*,application/pdf"></label>
+        <div class="full note bad" id="emsg"></div>
+        <button class="full" type="submit">Add expense</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="head"><h2>Filter</h2>
+        <div style="display:flex;gap:8px"><select id="efilter"></select><input type="month" id="mfilter"></div>
+      </div>
+      <div class="stats" style="margin:12px 0 0">
+        <div class="stat"><small>Total</small><b id="sTot">$0.00</b></div>
+        <div class="stat"><small>Entries</small><b id="sCnt">0</b></div>
+      </div>
+    </div>
+    <div class="card"><div class="head"><h2>By category</h2></div><div id="cats"></div></div>
+    <div class="card"><div class="head"><h2>Expenses</h2></div><div id="elist"></div></div>
+  </section>
+
+  <section id="menu" class="hide">
+    <div class="card">
+      <div class="head"><h2>Dish pricing</h2><select id="mrest" style="width:auto"></select></div>
+      <p class="note">Enter what each plate costs you (ingredients). Suggested price = plate cost ÷ target food cost %, rounded up to the next $0.25. Set the target for each restaurant in Overview.</p>
+    </div>
+    <div class="card">
+      <form id="mf">
+        <label>Dish<input type="text" id="mname" required></label>
+        <label>Plate cost ($)<input type="number" id="mcost" min="0" step="0.01" required></label>
+        <label>Current price ($)<input type="number" id="mprice" min="0" step="0.01" required></label>
+        <button type="submit" style="align-self:end">Add dish</button>
+      </form>
+    </div>
+    <div class="note bad" id="mmsg" style="margin:-8px 0 12px"></div>
+    <div class="card"><div id="mlist"></div></div>
+  </section>
+
+  <section id="ov" class="hide">
+    <div class="card">
+      <div class="head"><h2>Restaurants</h2></div>
+      <div id="setup"></div>
+    </div>
+    <div class="card">
+      <div class="head"><h2>Spend this month</h2><input type="month" id="ovm" style="width:auto"></div>
+      <div id="ovbars"></div>
+    </div>
+    <div class="card"><div class="head"><h2>Pricing health</h2></div><div id="ovp"></div></div>
+  </section>
+</main>
+<script>
+(function(){
+  var K='project369-v2', S={names:['Restaurant 1','Restaurant 2','Restaurant 3','Restaurant 4'],target:[30,30,30,30],E:[],M:[]}, db=null, assets=null, live=false;
+  try{var d=JSON.parse(localStorage.getItem(K)||'null');if(d&&d.names)S=d}catch(e){}
+  var $=function(i){return document.getElementById(i)};
+  var now=new Date(), ym=now.toISOString().slice(0,7);
+  function saveLocal(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+  function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+  function money(n){return '$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function sum(a){return a.reduce(function(t,x){return t+x.amount},0)}
+  function row(d){var x=d.data();x.id=d.id;return x}
+  function fail(el,e){$(el).textContent=(e&&e.code==='invalid_argument')?'You don’t have permission to add or change data here. Ask the owner to share this page with you as a Contributor.':'Something went wrong. Please try again.'}
+  function put(coll,key,o){if(live)return db.collection(coll).doc(o.id).set(o);S[key].push(o);saveLocal();render();return Promise.resolve()}
+  function del(coll,key,id){if(live)return db.collection(coll).doc(id).delete();S[key]=S[key].filter(function(x){return x.id!==id});saveLocal();render();return Promise.resolve()}
+  function saveCfg(){if(live)return db.doc('config/main').set({names:S.names,target:S.target});saveLocal();return Promise.resolve()}
+  function opts(all){return (all?'<option value="all">All restaurants</option>':'')+S.names.map(function(n,i){return '<option value="'+i+'">'+esc(n)+'</option>'}).join('')}
+  function fill(){[['erest',0],['efilter',1],['mrest',0]].forEach(function(p){var el=$(p[0]),v=el.value;el.innerHTML=opts(p[1]);if(v)el.value=v})}
+  $('edate').value=now.toISOString().slice(0,10);$('mfilter').value=ym;$('ovm').value=ym;
+
+  $('tabs').addEventListener('click',function(e){
+    var t=e.target.getAttribute('data-t');if(!t)return;
+    ['exp','menu','ov'].forEach(function(s){$(s).classList.toggle('hide',s!==t)});
+    Array.prototype.forEach.call($('tabs').children,function(b){b.classList.toggle('on',b===e.target)});
+    render();
+  });
+
+  function renderExp(){
+    var r=$('efilter').value||'all', mf=$('mfilter').value;
+    var rows=S.E.filter(function(x){return (r==='all'||String(x.r)===r)&&(!mf||x.date.slice(0,7)===mf)});
+    $('sTot').textContent=money(sum(rows));$('sCnt').textContent=rows.length;
+    var by={};rows.forEach(function(x){by[x.cat]=(by[x.cat]||0)+x.amount});
+    var ks=Object.keys(by).sort(function(a,b){return by[b]-by[a]}),mx=ks.length?by[ks[0]]:1;
+    $('cats').innerHTML=ks.length?ks.map(function(k){return '<div class="bar"><span class="n">'+esc(k)+'</span><span class="t"><i style="width:'+(by[k]/mx*100)+'%"></i></span><b>'+money(by[k])+'</b></div>'}).join(''):'<div class="empty">No expenses for this filter.</div>';
+    rows.sort(function(a,b){return b.date.localeCompare(a.date)});
+    $('elist').innerHTML=rows.length?rows.map(function(x){
+      var rc=x.rc?' · <a href="/_blob/'+esc(x.rc)+'" target="_blank" rel="noopener">📎 Receipt</a>':'';
+      return '<div class="row"><div><b>'+esc(S.names[x.r]||'?')+'</b><div class="m">'+esc(x.date)+' · '+esc(x.cat)+(x.note?' · '+esc(x.note):'')+rc+'</div></div><div><span class="amt">'+money(x.amount)+'</span> <button class="ghost" data-e="'+esc(x.id)+'" aria-label="Delete">✕</button></div></div>'}).join(''):'<div class="empty">Nothing logged yet.</div>';
+  }
+  $('ef').addEventListener('submit',function(e){
+    e.preventDefault();var a=parseFloat($('eamt').value);if(isNaN(a))return;
+    var btn=$('ef').querySelector('button[type=submit]'),f=$('ercpt').files&&$('ercpt').files[0];
+    $('emsg').textContent='';btn.disabled=true;btn.textContent='Saving…';
+    (f&&assets?assets.upload(f):Promise.resolve(null)).then(function(res){
+      return put('expenses','E',{id:uid(),r:+$('erest').value,date:$('edate').value,amount:a,cat:$('ecat').value,note:$('enote').value.trim(),rc:res?res.id:''});
+    }).then(function(){$('eamt').value='';$('enote').value='';$('ercpt').value=''})
+    .catch(function(err){fail('emsg',err)})
+    .then(function(){btn.disabled=false;btn.textContent='Add expense'});
+  });
+  $('elist').addEventListener('click',function(e){var id=e.target.getAttribute('data-e');if(!id)return;del('expenses','E',id).catch(function(err){fail('emsg',err)})});
+  $('efilter').addEventListener('change',render);$('mfilter').addEventListener('change',render);
+
+  function sugg(cost,t){return Math.ceil(cost/(t/100)/0.25)*0.25}
+  function renderMenu(){
+    var r=+($('mrest').value||0),t=S.target[r]||30;
+    var rows=S.M.filter(function(x){return x.r===r});
+    $('mlist').innerHTML=rows.length?rows.map(function(x){
+      var pct=x.price>0?x.cost/x.price*100:0,s=sugg(x.cost,t),low=pct>t+0.05;
+      return '<div class="row"><div><b>'+esc(x.name)+'</b><div class="m">Cost '+money(x.cost)+' · Price '+money(x.price)+' · Food cost '+pct.toFixed(1)+'% · Margin '+money(x.price-x.cost)+'</div></div><div style="text-align:right"><span class="tag '+(low?'bad':'ok')+'">'+(low?'Raise to '+money(s):'On target')+'</span> <button class="ghost" data-m="'+esc(x.id)+'" aria-label="Delete">✕</button><div class="m">Target price '+money(s)+' @ '+t+'%</div></div></div>';
+    }).join(''):'<div class="empty">No dishes yet for '+esc(S.names[r])+'.</div>';
+  }
+  $('mf').addEventListener('submit',function(e){
+    e.preventDefault();var c=parseFloat($('mcost').value),p=parseFloat($('mprice').value);if(isNaN(c)||isNaN(p))return;
+    $('mmsg').textContent='';
+    put('dishes','M',{id:uid(),r:+$('mrest').value,name:$('mname').value.trim(),cost:c,price:p}).then(function(){$('mname').value='';$('mcost').value='';$('mprice').value=''}).catch(function(err){fail('mmsg',err)});
+  });
+  $('mlist').addEventListener('click',function(e){var id=e.target.getAttribute('data-m');if(!id)return;del('dishes','M',id).catch(function(err){fail('mmsg',err)})});
+  $('mrest').addEventListener('change',renderMenu);
+
+  function renderOv(){
+    var ae=document.activeElement;if(ae&&$('setup').contains(ae))return;
+    $('setup').innerHTML=S.names.map(function(n,i){return '<div class="grid" style="margin-bottom:8px"><label>Name<input type="text" data-n="'+i+'" value="'+esc(n)+'"></label><label>Target food cost %<input type="number" data-t="'+i+'" value="'+S.target[i]+'" min="5" max="90" step="1"></label></div>'}).join('');
+    var m=$('ovm').value,tot=S.names.map(function(n,i){return sum(S.E.filter(function(x){return x.r===i&&(!m||x.date.slice(0,7)===m)}))});
+    var mx=Math.max.apply(null,tot.concat([1]));
+    $('ovbars').innerHTML=S.names.map(function(n,i){return '<div class="bar"><span class="n">'+esc(n)+'</span><span class="t"><i style="width:'+(tot[i]/mx*100)+'%"></i></span><b>'+money(tot[i])+'</b></div>'}).join('')+'<p class="note">Combined: '+money(tot.reduce(function(a,b){return a+b},0))+'</p>';
+    $('ovp').innerHTML=S.names.map(function(n,i){
+      var ds=S.M.filter(function(x){return x.r===i}),t=S.target[i],low=ds.filter(function(x){return x.price>0&&x.cost/x.price*100>t+0.05}).length;
+      var avg=ds.length?ds.reduce(function(a,x){return a+(x.price>0?x.cost/x.price*100:0)},0)/ds.length:0;
+      return '<div class="row"><div><b>'+esc(n)+'</b><div class="m">'+ds.length+' dishes · avg food cost '+(ds.length?avg.toFixed(1)+'%':'–')+' · target '+t+'%</div></div><span class="tag '+(low?'bad':'ok')+'">'+(ds.length?(low?low+' underpriced':'All on target'):'No dishes')+'</span></div>';
+    }).join('');
+  }
+  $('setup').addEventListener('change',function(e){
+    var n=e.target.getAttribute('data-n'),t=e.target.getAttribute('data-t');
+    if(n!==null)S.names[+n]=e.target.value.trim()||('Restaurant '+(+n+1));
+    if(t!==null)S.target[+t]=Math.min(90,Math.max(5,parseFloat(e.target.value)||30));
+    saveCfg().catch(function(err){fail('mmsg',err)});fill();render();
+  });
+  $('ovm').addEventListener('change',renderOv);
+
+  function render(){renderExp();renderMenu();renderOv()}
+  fill();render();
+
+  /* shared mode: lights up when the viewer can use the page database */
+  if(window.claude&&claude.use){
+    Promise.all([claude.use('db').catch(function(){return null}),claude.use('assets').catch(function(){return null})]).then(function(r){
+      db=r[0];assets=r[1];$('rcwrap').classList.toggle('hide',!assets);
+      if(!db)return;
+      live=true;S.E=[];S.M=[];$('mode').textContent='shared with your team · live';
+      var err=function(){live=false;$('mode').textContent='shared data unavailable'};
+      db.collection('expenses').onSnapshot(function(s){S.E=s.docs.map(row);renderExp();renderOv()},err);
+      db.collection('dishes').onSnapshot(function(s){S.M=s.docs.map(row);renderMenu();renderOv()},err);
+      db.doc('config/main').onSnapshot(function(s){if(s.exists){var c=s.data();if(c.names)S.names=c.names;if(c.target)S.target=c.target}fill();render()},err);
+    });
+  } else {$('rcwrap').classList.add('hide')}
+})();
+</script>
+</body>
+</html>
