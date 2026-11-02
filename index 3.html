@@ -51,6 +51,8 @@ label.chk{flex-direction:row;align-items:center;gap:8px;font-size:.9rem;color:va
 label.chk input{width:auto;height:auto}
 input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);width:100%;min-width:0;height:42px}
 input:disabled,select:disabled,input[readonly]{opacity:.65}
+textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);width:100%;min-height:96px;resize:vertical}
+.qs{width:auto;height:34px;padding:4px 8px;font-size:.85rem}
 button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:var(--accent-t);font-weight:600;min-height:42px}
 button:disabled{opacity:.55;cursor:default}
 button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weight:400;min-height:0}
@@ -110,6 +112,7 @@ th{color:var(--muted);font-weight:600}
 <main>
   <h1>🍽️ Проєкт 369 · Ресторани</h1>
   <p class="sub"><span id="mode">збережено лише в цьому браузері</span></p>
+  <div class="card hide" id="signin" style="border-color:var(--bad)"><b>Увійдіть у Claude</b><p class="note" style="margin-top:4px">Щоб бачити та вносити дані команди, увійдіть у свій обліковий запис Claude і відкрийте це посилання знову. Без входу дані команди недоступні.</p></div>
 
   <div class="rtabs" id="rtabs"></div>
   <div class="stabs" id="tabs">
@@ -120,6 +123,7 @@ th{color:var(--muted);font-weight:600}
     <button data-t="menu">Меню і ціни</button>
     <button data-t="rep">Звіти</button>
     <button data-t="hist">Історія</button>
+    <button data-t="ideas">💡 Пропозиції</button>
     <button data-t="set">Налаштування</button>
   </div>
 
@@ -381,6 +385,24 @@ th{color:var(--muted);font-weight:600}
     <div class="card"><div id="hlist"></div><button class="sec hide" id="hmore" type="button" style="width:100%;margin-top:10px">Показати більше</button></div>
   </section>
 
+  <section id="ideas" class="hide">
+    <div class="card wr" id="qcard">
+      <div class="head"><h2>Запропонувати покращення</h2></div>
+      <form id="qf">
+        <label><span>Розділ</span><select id="qarea"></select></label>
+        <label><span>Важливість</span><select id="qprio"><option value="2">Середня</option><option value="3">Висока</option><option value="1">Низька</option></select></label>
+        <label class="full"><span>Що покращити?</span><textarea id="qtext" rows="4" required placeholder="Опишіть, що незручно або чого не вистачає, і як це мало б працювати"></textarea></label>
+        <div class="full note bad" id="qmsg"></div>
+        <button class="full" type="submit" id="qsub">Надіслати пропозицію</button>
+      </form>
+      <p class="note">Пропозиції бачать усі учасники. Власник разом із Claude регулярно їх переглядає та позначає статус.</p>
+    </div>
+    <div class="card">
+      <div class="head"><h2>Пропозиції</h2><div class="ctl"><select id="qfilter"><option value="open">Відкриті</option><option value="done">Виконані</option><option value="all">Усі</option></select></div></div>
+      <div id="qlist"></div>
+    </div>
+  </section>
+
   <section id="set" class="hide">
     <div class="card">
       <div class="head"><h2>Ресторани</h2></div>
@@ -397,7 +419,7 @@ th{color:var(--muted);font-weight:600}
 <script>
 (function(){
   var K='project369-v2', UK='project369-ui', LOC='uk-UA';
-  var S={names:['Ресторан 1','Ресторан 2','Ресторан 3','Ресторан 4'],target:[30,30,30,30],cur:'₴',sub:{},E:[],M:[],L:[],I:[],V:[],P:[]};
+  var S={names:['Ресторан 1','Ресторан 2','Ресторан 3','Ресторан 4'],target:[30,30,30,30],cur:'₴',sub:{},E:[],M:[],L:[],I:[],V:[],P:[],Q:[]};
   var db=null, assets=null, user=null, dl=null, live=false, me='', canWrite=true, canCfg=true, LOGU={}, LOGS={}, STK={}, lastSync=null;
   var $=function(i){return document.getElementById(i)};
   var each=function(l,fn){Array.prototype.forEach.call(l,fn)};
@@ -420,7 +442,7 @@ th{color:var(--muted);font-weight:600}
   function eLabel(x){return x.g==='food'?fgName(x.c)+(x.s?' · '+x.s:''):(x.c||'')}
   function egName(g){return EG[g]?EG[g][0]:g}
 
-  try{var d0=JSON.parse(localStorage.getItem(K)||'null');if(d0&&d0.names){for(var k0 in d0)S[k0]=d0[k0];['E','M','L','I','V','P'].forEach(function(k){S[k]=S[k]||[]});S.sub=S.sub||{};S.E=S.E.map(normE);S.I=S.I.map(normI)}}catch(e){}
+  try{var d0=JSON.parse(localStorage.getItem(K)||'null');if(d0&&d0.names){for(var k0 in d0)S[k0]=d0[k0];['E','M','L','I','V','P','Q'].forEach(function(k){S[k]=S[k]||[]});S.sub=S.sub||{};S.E=S.E.map(normE);S.I=S.I.map(normI)}}catch(e){}
   var R=0, T='dash', FT='stock';
   try{var u0=JSON.parse(localStorage.getItem(UK)||'null');if(u0){R=u0.R==='all'?'all':Math.min(3,Math.max(0,+u0.R||0));T=u0.T||T;FT=u0.FT||FT}}catch(e){}
 
@@ -494,7 +516,7 @@ th{color:var(--muted);font-weight:600}
   function restoreItem(entry){var k=KIND[entry.kind],o=entry.before;return put(k.coll,k.key,o).then(function(){return logIt('restore',entry.kind,k.sum(o),null,o,null,o.r)})}
   function editBtns(a,b,id){return canWrite?'<button class="ghost" data-'+a+'="'+esc(id)+'" aria-label="Редагувати" title="Редагувати">✎</button><button class="ghost" data-'+b+'="'+esc(id)+'" aria-label="Видалити" title="Видалити">✕</button>':''}
 
-  var ALL=['dash','sales','food','exp','menu','rep','hist','set'], SECS={one:['dash','sales','food','exp','menu','rep','hist'],all:['dash','rep','hist','set']};
+  var ALL=['dash','sales','food','exp','menu','rep','hist','ideas','set'], SECS={one:['dash','sales','food','exp','menu','rep','hist','ideas'],all:['dash','rep','hist','ideas','set']};
   function renderRTabs(){
     $('rtabs').innerHTML=S.names.map(function(n,i){return '<button data-r="'+i+'"'+(R===i?' class="on"':'')+'>'+esc(rName(i))+'</button>'}).join('')+'<button data-r="all"'+(R==='all'?' class="on"':'')+'>📊 Усі ресторани</button>';
   }
@@ -972,7 +994,7 @@ th{color:var(--muted);font-weight:600}
     if(!ids.length)return;
     ids.forEach(function(i){NM[i]='…'});
     if(!user){ids.forEach(function(i){NM[i]='Хтось'});return}
-    user.profiles(ids).then(function(ps){ids.forEach(function(i){var p=ps&&ps[i];NM[i]=(p&&p.isMe)?'Ви':((p&&p.name)||'Хтось')});renderHist()}).catch(function(){ids.forEach(function(i){NM[i]='Хтось'});renderHist()});
+    user.profiles(ids).then(function(ps){ids.forEach(function(i){var p=ps&&ps[i];NM[i]=(p&&p.isMe)?'Ви':((p&&p.name)||'Хтось')});renderHist();renderIdeas()}).catch(function(){ids.forEach(function(i){NM[i]='Хтось'});renderHist();renderIdeas()});
   }
   function histRows(){
     var t=$('htype').value,a=$('hact').value,m=$('hmonth').value;
@@ -1015,6 +1037,33 @@ th{color:var(--muted);font-weight:600}
     saveFile('project369-istoriya-'+today()+'.csv',csv.join('\n'));
   });
 
+  /* ================= ПРОПОЗИЦІЇ ================= */
+  var QA=[['general','Загальне'],['dash','Панель'],['sales','Продажі'],['food','Продукти'],['exp','Витрати'],['menu','Меню і ціни'],['rep','Звіти'],['hist','Історія'],['set','Налаштування']];
+  var QST={new:['Нова','info'],planned:['Заплановано','info'],done:['Виконано','ok'],declined:['Відхилено','bad']},QP={1:'низька',2:'середня',3:'висока'};
+  $('qarea').innerHTML=opts(QA);
+  function qaName(k){for(var i=0;i<QA.length;i++)if(QA[i][0]===k)return QA[i][1];return k}
+  function renderIdeas(){
+    if(T!=='ideas')return;
+    var f=$('qfilter').value;
+    var rows=S.Q.filter(function(x){return (R==='all'||x.r===R||x.r==null)&&(f==='all'||(f==='done'?(x.status==='done'||x.status==='declined'):(x.status==='new'||x.status==='planned')))})
+      .sort(function(a,b){return ((b.prio||2)-(a.prio||2))||String(b.at).localeCompare(String(a.at))});
+    var ids=[];rows.forEach(function(x){if(x.who&&x.who!==me&&!(x.who in NM)&&ids.indexOf(x.who)<0)ids.push(x.who)});resolve(ids);
+    $('qlist').innerHTML=rows.length?rows.map(function(x){
+      var st=QST[x.status]||QST.new,mine=x.who===me;
+      var ctl=canCfg?'<select class="qs" data-qs="'+esc(x.id)+'" aria-label="Статус">'+opts(Object.keys(QST).map(function(k){return [k,QST[k][0]]}),x.status)+'</select>':'<span class="tag '+st[1]+'">'+st[0]+'</span>';
+      return '<div class="row"><div><div class="m">'+esc(qaName(x.area))+' · важливість '+(QP[x.prio]||'середня')+(R==='all'&&x.r!=null?' · '+esc(rName(x.r)):'')+'</div><div style="white-space:pre-wrap;margin:4px 0">'+esc(x.text)+'</div>'+(x.reply?'<div class="m chg">Відповідь: '+esc(x.reply)+'</div>':'')+'<div class="m">'+esc(when(x.at))+' · '+esc(who(x.who))+'</div></div><div class="acts">'+ctl+((mine||canCfg)&&canWrite?'<button class="ghost" data-qd="'+esc(x.id)+'" aria-label="Видалити" title="Видалити">✕</button>':'')+'</div></div>';
+    }).join(''):'<div class="empty">'+(f==='done'?'Ще немає виконаних пропозицій.':'Немає відкритих пропозицій. Маєте ідею? Напишіть її вище.')+'</div>';
+  }
+  $('qfilter').addEventListener('change',renderIdeas);
+  $('qf').addEventListener('submit',function(e){
+    e.preventDefault();var t=$('qtext').value.trim();if(!t)return;
+    var o={id:uid(),at:new Date().toISOString(),who:me,r:R==='all'?null:R,area:$('qarea').value,prio:+$('qprio').value,text:t,status:'new',reply:''};
+    $('qmsg').textContent='';$('qsub').disabled=true;
+    put('ideas','Q',o).then(function(){$('qtext').value='';$('qmsg').innerHTML='<span class="ok">Дякуємо! Пропозицію надіслано.</span>'}).catch(function(err){fail('qmsg',err)}).then(function(){$('qsub').disabled=false});
+  });
+  $('qlist').addEventListener('change',function(e){var id=e.target.getAttribute('data-qs');if(!id)return;var x=find(S.Q,id);if(!x)return;var o=cp(x);o.status=e.target.value;o.upd=new Date().toISOString();put('ideas','Q',o).catch(function(err){fail('qmsg',err)})});
+  $('qlist').addEventListener('click',function(e){var id=e.target.getAttribute('data-qd');if(id)del('ideas','Q',id).catch(function(err){fail('qmsg',err)})});
+
   /* ================= НАЛАШТУВАННЯ ================= */
   function renderSet(){
     if(R!=='all')return;
@@ -1054,6 +1103,7 @@ th{color:var(--muted);font-weight:600}
     if(T==='menu')renderMenu();
     if(T==='rep')renderRep();
     if(T==='hist')renderHist();
+    if(T==='ideas')renderIdeas();
     if(T==='set')renderSet();
   }
   function applyAccess(){
@@ -1070,8 +1120,8 @@ th{color:var(--muted);font-weight:600}
     claude.use('downloads').then(function(d){dl=d}).catch(function(){});
     Promise.all(['db','assets','user'].map(function(n){return claude.use(n).catch(function(){return null})})).then(function(r){
       db=r[0];assets=r[1];user=r[2];$('rcwrap').classList.toggle('hide',!assets);
-      if(!db)return;
-      live=true;S.E=[];S.M=[];S.L=[];S.I=[];S.V=[];S.P=[];$('mode').textContent='завантаження спільних даних…';render();
+      if(!db){$('signin').classList.remove('hide');canWrite=false;canCfg=false;applyAccess();$('mode').textContent='ви не ввійшли в Claude';return}
+      live=true;S.E=[];S.M=[];S.L=[];S.I=[];S.V=[];S.P=[];S.Q=[];$('mode').textContent='завантаження спільних даних…';render();
       var loaded=false,timer=setTimeout(function(){if(!loaded)$('mode').textContent='спільні дані завантажуються довше, ніж зазвичай…'},10000);
       function ok(){lastSync=new Date().toISOString();if(!loaded){loaded=true;clearTimeout(timer);$('mode').textContent=canWrite?'спільний доступ для команди · оновлюється в реальному часі':'спільний доступ · лише перегляд'}}
       var err=function(){clearTimeout(timer);$('mode').textContent='спільні дані недоступні'};
@@ -1081,7 +1131,7 @@ th{color:var(--muted);font-weight:600}
         });
       } else canCfg=false;
       function sub(coll,key,map){db.collection(coll).onSnapshot(function(s){ok();S[key]=s.docs.map(row);if(map)S[key]=S[key].map(map);render()},err)}
-      sub('sales','P');sub('expenses','E',normE);sub('dishes','M');sub('supplies','I',normI);sub('moves','V');
+      sub('sales','P');sub('ideas','Q');sub('expenses','E',normE);sub('dishes','M');sub('supplies','I',normI);sub('moves','V');
       db.collection('log').onSnapshot(function(s){
         ok();
         s.docs.forEach(function(d){
