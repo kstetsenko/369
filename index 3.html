@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Project 369 · Restaurant Expenses & Pricing</title>
 <style>
-:root{--bg:#faf8f5;--card:#fff;--text:#1f1b16;--muted:#6f675d;--line:#e6dfd5;--accent:#c2410c;--accent-t:#fff;--bar:#f1c9a8;--ok:#15803d;--bad:#b91c1c;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17140f;--card:#211d17;--text:#f3ede4;--muted:#a39a8c;--line:#383128;--accent:#f97316;--accent-t:#1a1004;--bar:#7c3a12;--ok:#4ade80;--bad:#f87171;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#17140f;--card:#211d17;--text:#f3ede4;--muted:#a39a8c;--line:#383128;--accent:#f97316;--accent-t:#1a1004;--bar:#7c3a12;--ok:#4ade80;--bad:#f87171;color-scheme:dark}
+:root{--bg:#faf8f5;--card:#fff;--text:#1f1b16;--muted:#6f675d;--line:#e6dfd5;--accent:#c2410c;--accent-t:#fff;--bar:#f1c9a8;--ok:#15803d;--bad:#b91c1c;--info:#1d4ed8;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17140f;--card:#211d17;--text:#f3ede4;--muted:#a39a8c;--line:#383128;--accent:#f97316;--accent-t:#1a1004;--bar:#7c3a12;--ok:#4ade80;--bad:#f87171;--info:#93c5fd;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17140f;--card:#211d17;--text:#f3ede4;--muted:#a39a8c;--line:#383128;--accent:#f97316;--accent-t:#1a1004;--bar:#7c3a12;--ok:#4ade80;--bad:#f87171;--info:#93c5fd;color-scheme:dark}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -25,13 +25,19 @@ h1{font-size:1.5rem;margin:0}
 form,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 label{font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);width:100%}
+input:disabled,select:disabled{opacity:.6}
 button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:var(--accent-t);font-weight:600}
+button:disabled{opacity:.6;cursor:default}
 button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weight:400}
+button.ghost:hover{color:var(--text)}
+button.sec{background:var(--card);color:var(--text);border:1px solid var(--line);font-weight:500}
 .full{grid-column:1/-1}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .row:first-child{border-top:0}
-.m{color:var(--muted);font-size:.85rem}
+.row>div:first-child{min-width:0;flex:1}
+.m{color:var(--muted);font-size:.85rem;overflow-wrap:anywhere}
 .amt{font-weight:700;white-space:nowrap}
+.acts{white-space:nowrap;text-align:right}
 .bar{display:flex;align-items:center;gap:10px;margin:6px 0;font-size:.9rem}
 .bar .n{width:110px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar .t{flex:1;background:var(--line);border-radius:6px;height:12px;overflow:hidden}
@@ -40,9 +46,14 @@ button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weig
 .head h2{font-size:1.05rem;margin:0}
 .empty{color:var(--muted);text-align:center;padding:16px 0}
 .tag{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
-.ok{color:var(--ok)}.bad{color:var(--bad)}
-.hide{display:none}a{color:var(--accent)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.info{color:var(--info)}
+.hide{display:none!important}a{color:var(--accent)}
 .note{font-size:.85rem;color:var(--muted);margin:8px 0 0}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.stat .m{display:block;margin-top:2px}
+.editing{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.chg{margin:4px 0 2px;padding-left:10px;border-left:2px solid var(--line)}
+@media print{.tabs,.noprint{display:none!important}body{background:#fff;color:#000}.card,.stat{break-inside:avoid;border-color:#ccc}}
 </style>
 </head>
 <body>
@@ -53,10 +64,13 @@ button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weig
     <button data-t="exp" class="on">Expenses</button>
     <button data-t="menu">Menu pricing</button>
     <button data-t="ov">Overview</button>
+    <button data-t="rep">Reports</button>
+    <button data-t="hist">History</button>
   </div>
 
   <section id="exp">
-    <div class="card">
+    <div class="card" id="ecard">
+      <div class="head"><h2 id="etitle">Log an expense</h2></div>
       <form id="ef">
         <label>Restaurant<select id="erest"></select></label>
         <label>Date<input type="date" id="edate" required></label>
@@ -67,15 +81,16 @@ button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weig
         <label class="full">Vendor / note<input type="text" id="enote" placeholder="e.g. Sysco order"></label>
         <label class="full" id="rcwrap">Receipt photo or PDF (optional)<input type="file" id="ercpt" accept="image/*,application/pdf"></label>
         <div class="full note bad" id="emsg"></div>
-        <button class="full" type="submit">Add expense</button>
+        <button class="full" type="submit" id="esub">Add expense</button>
+        <button class="full sec hide" type="button" id="ecancel">Cancel editing</button>
       </form>
     </div>
     <div class="card">
       <div class="head"><h2>Filter</h2>
-        <div style="display:flex;gap:8px"><select id="efilter"></select><input type="month" id="mfilter"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><select id="efilter" style="width:auto"></select><input type="month" id="mfilter" style="width:auto"><button class="sec" id="mall" type="button">All months</button></div>
       </div>
       <div class="stats" style="margin:12px 0 0">
-        <div class="stat"><small>Total</small><b id="sTot">$0.00</b></div>
+        <div class="stat"><small id="sLbl">Total</small><b id="sTot">$0.00</b></div>
         <div class="stat"><small>Entries</small><b id="sCnt">0</b></div>
       </div>
     </div>
@@ -88,12 +103,14 @@ button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weig
       <div class="head"><h2>Dish pricing</h2><select id="mrest" style="width:auto"></select></div>
       <p class="note">Enter what each plate costs you (ingredients). Suggested price = plate cost ÷ target food cost %, rounded up to the next $0.25. Set the target for each restaurant in Overview.</p>
     </div>
-    <div class="card">
+    <div class="card" id="mcard">
+      <div class="head"><h2 id="mtitle">Add a dish</h2></div>
       <form id="mf">
         <label>Dish<input type="text" id="mname" required></label>
         <label>Plate cost ($)<input type="number" id="mcost" min="0" step="0.01" required></label>
         <label>Current price ($)<input type="number" id="mprice" min="0" step="0.01" required></label>
-        <button type="submit" style="align-self:end">Add dish</button>
+        <button type="submit" id="msub" style="align-self:end">Add dish</button>
+        <button class="full sec hide" type="button" id="mcancel">Cancel editing</button>
       </form>
     </div>
     <div class="note bad" id="mmsg" style="margin:-8px 0 12px"></div>
@@ -104,6 +121,7 @@ button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weig
     <div class="card">
       <div class="head"><h2>Restaurants</h2></div>
       <div id="setup"></div>
+      <div class="note bad" id="smsg"></div>
     </div>
     <div class="card">
       <div class="head"><h2>Spend this month</h2><input type="month" id="ovm" style="width:auto"></div>
@@ -111,37 +129,125 @@ button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weig
     </div>
     <div class="card"><div class="head"><h2>Pricing health</h2></div><div id="ovp"></div></div>
   </section>
+
+  <section id="rep" class="hide">
+    <div class="card noprint">
+      <div class="tabs" id="rtype" style="margin-bottom:12px">
+        <button data-p="week" class="on">Weekly</button>
+        <button data-p="month">Monthly</button>
+      </div>
+      <div class="grid">
+        <label>Restaurant<select id="rrest"></select></label>
+        <label id="rwk">Any day in the week<input type="date" id="rweek"></label>
+        <label id="rmo" class="hide">Month<input type="month" id="rmonth"></label>
+      </div>
+      <div class="btns">
+        <button class="sec" id="rprev">‹ Previous</button>
+        <button class="sec" id="rnow">Current</button>
+        <button class="sec" id="rnext">Next ›</button>
+        <span style="flex:1"></span>
+        <button class="sec" id="rcsv">Export CSV</button>
+        <button id="rprint">Print / PDF</button>
+      </div>
+    </div>
+    <h2 id="rtitle" style="font-size:1.15rem;margin:0 0 12px"></h2>
+    <div class="stats">
+      <div class="stat"><small>Total spend</small><b id="rTot">$0.00</b></div>
+      <div class="stat"><small>Entries</small><b id="rCnt">0</b></div>
+      <div class="stat"><small>Average per day</small><b id="rAvg">$0.00</b></div>
+      <div class="stat"><small>Vs previous period</small><b id="rChg">–</b><span class="m" id="rPrev"></span></div>
+    </div>
+    <div class="card"><div class="head"><h2 id="rtlh">By day</h2></div><div id="rtl"></div></div>
+    <div class="card"><div class="head"><h2>By category</h2></div><div id="rcat"></div></div>
+    <div class="card" id="rrestc"><div class="head"><h2>By restaurant</h2></div><div id="rbyr"></div></div>
+    <div class="card"><div class="head"><h2>Expenses in this period</h2></div><div id="rlist"></div></div>
+  </section>
+
+  <section id="hist" class="hide">
+    <div class="card noprint">
+      <div class="head"><h2>Activity history</h2><button class="sec" id="hcsv" type="button">Export CSV</button></div>
+      <div class="grid">
+        <label>Type<select id="htype"><option value="all">Everything</option><option value="expense">Expenses</option><option value="dish">Dishes</option><option value="settings">Settings</option></select></label>
+        <label>Action<select id="hact"><option value="all">All actions</option><option value="add">Added</option><option value="edit">Edited</option><option value="delete">Deleted</option><option value="restore">Restored</option></select></label>
+        <label>Month<input type="month" id="hmonth"></label>
+      </div>
+      <p class="note">Every add, edit and delete is recorded here with who made it and when. Deleted entries can be restored.</p>
+      <div class="note bad" id="hmsg"></div>
+    </div>
+    <div class="card"><div id="hlist"></div><button class="sec hide" id="hmore" type="button" style="width:100%;margin-top:10px">Show more</button></div>
+  </section>
 </main>
 <script>
 (function(){
-  var K='project369-v2', S={names:['Restaurant 1','Restaurant 2','Restaurant 3','Restaurant 4'],target:[30,30,30,30],E:[],M:[]}, db=null, assets=null, live=false;
-  try{var d=JSON.parse(localStorage.getItem(K)||'null');if(d&&d.names)S=d}catch(e){}
+  var K='project369-v2', S={names:['Restaurant 1','Restaurant 2','Restaurant 3','Restaurant 4'],target:[30,30,30,30],E:[],M:[],L:[]};
+  var db=null, assets=null, user=null, dl=null, live=false, me='', canWrite=true;
+  try{var d=JSON.parse(localStorage.getItem(K)||'null');if(d&&d.names){S=d;S.E=S.E||[];S.M=S.M||[];S.L=S.L||[]}}catch(e){}
   var $=function(i){return document.getElementById(i)};
-  var now=new Date(), ym=now.toISOString().slice(0,7);
+
+  /* ---------- helpers ---------- */
+  function pd(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+(p[2]||1))}
+  function fd(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+  function addD(d,n){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x}
+  function monday(d){return addD(d,-((d.getDay()+6)%7))}
+  function short(d){return d.toLocaleDateString(undefined,{day:'numeric',month:'short'})}
+  var now=new Date(), ym=fd(now).slice(0,7);
   function saveLocal(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
-  function money(n){return '$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+  function money(n){return '$'+(+n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function sum(a){return a.reduce(function(t,x){return t+x.amount},0)}
   function row(d){var x=d.data();x.id=d.id;return x}
-  function fail(el,e){$(el).textContent=(e&&e.code==='invalid_argument')?'You don’t have permission to add or change data here. Ask the owner to share this page with you as a Contributor.':'Something went wrong. Please try again.'}
-  function put(coll,key,o){if(live)return db.collection(coll).doc(o.id).set(o);S[key].push(o);saveLocal();render();return Promise.resolve()}
+  function idx(a,id){for(var i=0;i<a.length;i++)if(a[i].id===id)return i;return -1}
+  function find(a,id){var i=idx(a,id);return i<0?null:a[i]}
+  function rName(r){return S.names[r]||('Restaurant '+(+r+1))}
+  function fail(el,e){var c=e&&e.code;$(el).textContent=c==='invalid_argument'?'You don’t have permission to add or change data here. Ask the owner to share this page with you as a Contributor.':c==='quota_exceeded'?'Storage is full. Delete some old entries and try again.':'Something went wrong. Please try again.'}
+  function q(s){s=String(s);if(/^[=+\-@]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}
+  function saveFile(name,data){
+    if(dl){dl.save({filename:name,data:data}).catch(function(){});return}
+    try{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}catch(e){}
+  }
+
+  /* ---------- storage (shared db when available, else this browser) ---------- */
+  function put(coll,key,o){if(live)return db.collection(coll).doc(o.id).set(o);var i=idx(S[key],o.id);if(i>=0)S[key][i]=o;else S[key].push(o);saveLocal();render();return Promise.resolve()}
   function del(coll,key,id){if(live)return db.collection(coll).doc(id).delete();S[key]=S[key].filter(function(x){return x.id!==id});saveLocal();render();return Promise.resolve()}
   function saveCfg(){if(live)return db.doc('config/main').set({names:S.names,target:S.target});saveLocal();return Promise.resolve()}
-  function opts(all){return (all?'<option value="all">All restaurants</option>':'')+S.names.map(function(n,i){return '<option value="'+i+'">'+esc(n)+'</option>'}).join('')}
-  function fill(){[['erest',0],['efilter',1],['mrest',0]].forEach(function(p){var el=$(p[0]),v=el.value;el.innerHTML=opts(p[1]);if(v)el.value=v})}
-  $('edate').value=now.toISOString().slice(0,10);$('mfilter').value=ym;$('ovm').value=ym;
 
+  /* ---------- activity log ---------- */
+  function logIt(act,kind,text,before,after,changes){
+    var o={id:uid(),at:new Date().toISOString(),who:me,act:act,kind:kind,text:text,before:before||null,after:after||null,changes:changes||[]};
+    if(live)return db.collection('log').doc(o.id).set(o).catch(function(){});
+    S.L.push(o);saveLocal();renderHist();return Promise.resolve();
+  }
+  function eSum(x){return rName(x.r)+' · '+x.date+' · '+x.cat+' · '+money(x.amount)+(x.note?' · '+x.note:'')}
+  function dSum(x){return rName(x.r)+' · '+x.name+' · cost '+money(x.cost)+' · price '+money(x.price)}
+  var EF={r:['Restaurant',rName],date:['Date'],amount:['Amount',money],cat:['Category'],note:['Note'],rc:['Receipt',function(v){return v?'attached':'none'}]};
+  var DF={r:['Restaurant',rName],name:['Dish'],cost:['Plate cost',money],price:['Price',money]};
+  function blank(v){return v==null||v===''}
+  function diff(F,a,b){var out=[];for(var k in F){var x=a[k],y=b[k];if(String(blank(x)?'':x)!==String(blank(y)?'':y)){var f=F[k][1]||String;out.push(F[k][0]+': '+(blank(x)?'—':f(x))+' → '+(blank(y)?'—':f(y)))}}return out}
+  var KIND={expense:{coll:'expenses',key:'E',F:EF,sum:eSum},dish:{coll:'dishes',key:'M',F:DF,sum:dSum}};
+  function saveItem(kind,o,before){var k=KIND[kind];return put(k.coll,k.key,o).then(function(){return logIt(before?'edit':'add',kind,k.sum(o),before,o,before?diff(k.F,before,o):null)})}
+  function removeItem(kind,id){var k=KIND[kind],b=find(S[k.key],id);if(!b)return Promise.resolve();return del(k.coll,k.key,id).then(function(){return logIt('delete',kind,k.sum(b),b,null)})}
+  function restoreItem(entry){var k=KIND[entry.kind],o=entry.before;return put(k.coll,k.key,o).then(function(){return logIt('restore',entry.kind,k.sum(o),null,o)})}
+
+  function opts(all){return (all?'<option value="all">All restaurants</option>':'')+S.names.map(function(n,i){return '<option value="'+i+'">'+esc(n)+'</option>'}).join('')}
+  function fill(){[['erest',0],['efilter',1],['mrest',0],['rrest',1]].forEach(function(p){var el=$(p[0]),v=el.value;el.innerHTML=opts(p[1]);if(v)el.value=v})}
+  $('edate').value=fd(now);$('mfilter').value=ym;$('ovm').value=ym;
+
+  var TABS=['exp','menu','ov','rep','hist'];
   $('tabs').addEventListener('click',function(e){
     var t=e.target.getAttribute('data-t');if(!t)return;
-    ['exp','menu','ov'].forEach(function(s){$(s).classList.toggle('hide',s!==t)});
+    TABS.forEach(function(s){$(s).classList.toggle('hide',s!==t)});
     Array.prototype.forEach.call($('tabs').children,function(b){b.classList.toggle('on',b===e.target)});
     render();
   });
+  function editBtns(a,b,id){return canWrite?'<button class="ghost" data-'+a+'="'+esc(id)+'" aria-label="Edit" title="Edit">✎</button><button class="ghost" data-'+b+'="'+esc(id)+'" aria-label="Delete" title="Delete">✕</button>':''}
 
+  /* ---------- expenses ---------- */
+  var editE=null;
   function renderExp(){
     var r=$('efilter').value||'all', mf=$('mfilter').value;
     var rows=S.E.filter(function(x){return (r==='all'||String(x.r)===r)&&(!mf||x.date.slice(0,7)===mf)});
+    $('sLbl').textContent=mf?'Total':'Total · all time';
     $('sTot').textContent=money(sum(rows));$('sCnt').textContent=rows.length;
     var by={};rows.forEach(function(x){by[x.cat]=(by[x.cat]||0)+x.amount});
     var ks=Object.keys(by).sort(function(a,b){return by[b]-by[a]}),mx=ks.length?by[ks[0]]:1;
@@ -149,41 +255,78 @@ button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weig
     rows.sort(function(a,b){return b.date.localeCompare(a.date)});
     $('elist').innerHTML=rows.length?rows.map(function(x){
       var rc=x.rc?' · <a href="/_blob/'+esc(x.rc)+'" target="_blank" rel="noopener">📎 Receipt</a>':'';
-      return '<div class="row"><div><b>'+esc(S.names[x.r]||'?')+'</b><div class="m">'+esc(x.date)+' · '+esc(x.cat)+(x.note?' · '+esc(x.note):'')+rc+'</div></div><div><span class="amt">'+money(x.amount)+'</span> <button class="ghost" data-e="'+esc(x.id)+'" aria-label="Delete">✕</button></div></div>'}).join(''):'<div class="empty">Nothing logged yet.</div>';
+      return '<div class="row"><div><b>'+esc(rName(x.r))+'</b><div class="m">'+esc(x.date)+' · '+esc(x.cat)+(x.note?' · '+esc(x.note):'')+rc+'</div></div><div class="acts"><span class="amt">'+money(x.amount)+'</span> '+editBtns('ee','e',x.id)+'</div></div>'}).join(''):'<div class="empty">Nothing logged'+(mf?' for this month. Tap “All months” to see older entries.':' yet.')+'</div>';
   }
+  function startEditE(id){
+    var x=find(S.E,id);if(!x)return;editE=id;
+    $('erest').value=x.r;$('edate').value=x.date;$('eamt').value=x.amount;$('ecat').value=x.cat;$('enote').value=x.note||'';$('ercpt').value='';
+    $('esub').textContent='Save changes';$('ecancel').classList.remove('hide');$('etitle').textContent='Edit expense';$('ecard').classList.add('editing');$('emsg').textContent='';
+    $('ecard').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  function endEditE(){editE=null;$('eamt').value='';$('enote').value='';$('ercpt').value='';$('esub').textContent='Add expense';$('ecancel').classList.add('hide');$('etitle').textContent='Log an expense';$('ecard').classList.remove('editing')}
+  $('ecancel').addEventListener('click',function(){endEditE();$('emsg').textContent=''});
   $('ef').addEventListener('submit',function(e){
     e.preventDefault();var a=parseFloat($('eamt').value);if(isNaN(a))return;
-    var btn=$('ef').querySelector('button[type=submit]'),f=$('ercpt').files&&$('ercpt').files[0];
-    $('emsg').textContent='';btn.disabled=true;btn.textContent='Saving…';
+    var btn=$('esub'),f=$('ercpt').files&&$('ercpt').files[0],before=editE?find(S.E,editE):null;
+    if(editE&&!before){$('emsg').textContent='This expense was deleted by someone else. It will be added as a new entry.'}
+    else $('emsg').textContent='';
+    btn.disabled=true;btn.textContent='Saving…';
     (f&&assets?assets.upload(f):Promise.resolve(null)).then(function(res){
-      return put('expenses','E',{id:uid(),r:+$('erest').value,date:$('edate').value,amount:a,cat:$('ecat').value,note:$('enote').value.trim(),rc:res?res.id:''});
-    }).then(function(){$('eamt').value='';$('enote').value='';$('ercpt').value=''})
+      var o={id:before?before.id:uid(),r:+$('erest').value,date:$('edate').value,amount:a,cat:$('ecat').value,note:$('enote').value.trim(),rc:res?res.id:(before&&before.rc||'')};
+      if(before&&!diff(EF,before,o).length)return;
+      return saveItem('expense',o,before);
+    }).then(function(){endEditE()})
     .catch(function(err){fail('emsg',err)})
-    .then(function(){btn.disabled=false;btn.textContent='Add expense'});
+    .then(function(){btn.disabled=false;btn.textContent=editE?'Save changes':'Add expense'});
   });
-  $('elist').addEventListener('click',function(e){var id=e.target.getAttribute('data-e');if(!id)return;del('expenses','E',id).catch(function(err){fail('emsg',err)})});
+  $('elist').addEventListener('click',function(e){
+    var t=e.target,id;
+    if((id=t.getAttribute('data-ee')))return startEditE(id);
+    if((id=t.getAttribute('data-e'))){if(id===editE)endEditE();removeItem('expense',id).catch(function(err){fail('emsg',err)})}
+  });
   $('efilter').addEventListener('change',render);$('mfilter').addEventListener('change',render);
+  $('mall').addEventListener('click',function(){$('mfilter').value='';render()});
 
+  /* ---------- menu pricing ---------- */
+  var editM=null;
   function sugg(cost,t){return Math.ceil(cost/(t/100)/0.25)*0.25}
   function renderMenu(){
     var r=+($('mrest').value||0),t=S.target[r]||30;
     var rows=S.M.filter(function(x){return x.r===r});
     $('mlist').innerHTML=rows.length?rows.map(function(x){
       var pct=x.price>0?x.cost/x.price*100:0,s=sugg(x.cost,t),low=pct>t+0.05;
-      return '<div class="row"><div><b>'+esc(x.name)+'</b><div class="m">Cost '+money(x.cost)+' · Price '+money(x.price)+' · Food cost '+pct.toFixed(1)+'% · Margin '+money(x.price-x.cost)+'</div></div><div style="text-align:right"><span class="tag '+(low?'bad':'ok')+'">'+(low?'Raise to '+money(s):'On target')+'</span> <button class="ghost" data-m="'+esc(x.id)+'" aria-label="Delete">✕</button><div class="m">Target price '+money(s)+' @ '+t+'%</div></div></div>';
-    }).join(''):'<div class="empty">No dishes yet for '+esc(S.names[r])+'.</div>';
+      return '<div class="row"><div><b>'+esc(x.name)+'</b><div class="m">Cost '+money(x.cost)+' · Price '+money(x.price)+' · Food cost '+pct.toFixed(1)+'% · Margin '+money(x.price-x.cost)+'</div></div><div class="acts"><span class="tag '+(low?'bad':'ok')+'">'+(low?'Raise to '+money(s):'On target')+'</span> '+editBtns('me','m',x.id)+'<div class="m">Target price '+money(s)+' @ '+t+'%</div></div></div>';
+    }).join(''):'<div class="empty">No dishes yet for '+esc(rName(r))+'.</div>';
   }
+  function startEditM(id){
+    var x=find(S.M,id);if(!x)return;editM=id;
+    $('mrest').value=x.r;$('mname').value=x.name;$('mcost').value=x.cost;$('mprice').value=x.price;
+    $('msub').textContent='Save changes';$('mcancel').classList.remove('hide');$('mtitle').textContent='Edit dish';$('mcard').classList.add('editing');$('mmsg').textContent='';
+    renderMenu();$('mcard').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  function endEditM(){editM=null;$('mname').value='';$('mcost').value='';$('mprice').value='';$('msub').textContent='Add dish';$('mcancel').classList.add('hide');$('mtitle').textContent='Add a dish';$('mcard').classList.remove('editing')}
+  $('mcancel').addEventListener('click',function(){endEditM();$('mmsg').textContent=''});
   $('mf').addEventListener('submit',function(e){
     e.preventDefault();var c=parseFloat($('mcost').value),p=parseFloat($('mprice').value);if(isNaN(c)||isNaN(p))return;
+    var before=editM?find(S.M,editM):null;
+    var o={id:before?before.id:uid(),r:+$('mrest').value,name:$('mname').value.trim(),cost:c,price:p};
     $('mmsg').textContent='';
-    put('dishes','M',{id:uid(),r:+$('mrest').value,name:$('mname').value.trim(),cost:c,price:p}).then(function(){$('mname').value='';$('mcost').value='';$('mprice').value=''}).catch(function(err){fail('mmsg',err)});
+    if(before&&!diff(DF,before,o).length){endEditM();return}
+    saveItem('dish',o,before).then(function(){endEditM()}).catch(function(err){fail('mmsg',err)});
   });
-  $('mlist').addEventListener('click',function(e){var id=e.target.getAttribute('data-m');if(!id)return;del('dishes','M',id).catch(function(err){fail('mmsg',err)})});
+  $('mlist').addEventListener('click',function(e){
+    var t=e.target,id;
+    if((id=t.getAttribute('data-me')))return startEditM(id);
+    if((id=t.getAttribute('data-m'))){if(id===editM)endEditM();removeItem('dish',id).catch(function(err){fail('mmsg',err)})}
+  });
   $('mrest').addEventListener('change',renderMenu);
 
+  /* ---------- overview ---------- */
   function renderOv(){
-    var ae=document.activeElement;if(ae&&$('setup').contains(ae))return;
-    $('setup').innerHTML=S.names.map(function(n,i){return '<div class="grid" style="margin-bottom:8px"><label>Name<input type="text" data-n="'+i+'" value="'+esc(n)+'"></label><label>Target food cost %<input type="number" data-t="'+i+'" value="'+S.target[i]+'" min="5" max="90" step="1"></label></div>'}).join('');
+    var ae=document.activeElement;
+    if(!(ae&&$('setup').contains(ae))){
+      $('setup').innerHTML=S.names.map(function(n,i){return '<div class="grid" style="margin-bottom:8px"><label>Name<input type="text" data-n="'+i+'" value="'+esc(n)+'"'+(canWrite?'':' disabled')+'></label><label>Target food cost %<input type="number" data-t="'+i+'" value="'+S.target[i]+'" min="5" max="90" step="1"'+(canWrite?'':' disabled')+'></label></div>'}).join('');
+    }
     var m=$('ovm').value,tot=S.names.map(function(n,i){return sum(S.E.filter(function(x){return x.r===i&&(!m||x.date.slice(0,7)===m)}))});
     var mx=Math.max.apply(null,tot.concat([1]));
     $('ovbars').innerHTML=S.names.map(function(n,i){return '<div class="bar"><span class="n">'+esc(n)+'</span><span class="t"><i style="width:'+(tot[i]/mx*100)+'%"></i></span><b>'+money(tot[i])+'</b></div>'}).join('')+'<p class="note">Combined: '+money(tot.reduce(function(a,b){return a+b},0))+'</p>';
@@ -195,25 +338,152 @@ button.ghost{background:transparent;color:var(--muted);padding:4px 8px;font-weig
   }
   $('setup').addEventListener('change',function(e){
     var n=e.target.getAttribute('data-n'),t=e.target.getAttribute('data-t');
+    var b={names:S.names.slice(),target:S.target.slice()};
     if(n!==null)S.names[+n]=e.target.value.trim()||('Restaurant '+(+n+1));
     if(t!==null)S.target[+t]=Math.min(90,Math.max(5,parseFloat(e.target.value)||30));
-    saveCfg().catch(function(err){fail('mmsg',err)});fill();render();
+    var ch=[];S.names.forEach(function(nm,i){if(nm!==b.names[i])ch.push('Name: '+b.names[i]+' → '+nm);if(S.target[i]!==b.target[i])ch.push(nm+' target: '+b.target[i]+'% → '+S.target[i]+'%')});
+    $('smsg').textContent='';
+    if(ch.length)saveCfg().then(function(){return logIt('edit','settings','Restaurant settings',b,{names:S.names.slice(),target:S.target.slice()},ch)}).catch(function(err){S.names=b.names;S.target=b.target;fail('smsg',err);fill();render()});
+    fill();render();
   });
   $('ovm').addEventListener('change',renderOv);
 
-  function render(){renderExp();renderMenu();renderOv()}
+  /* ---------- reports (weekly / monthly) ---------- */
+  var RP='week', DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  function range(){
+    if(RP==='week'){var s=monday(pd($('rweek').value||fd(new Date())));return {s:s,e:addD(s,6)}}
+    var m=pd($('rmonth').value||fd(new Date()).slice(0,7));return {s:new Date(m.getFullYear(),m.getMonth(),1),e:new Date(m.getFullYear(),m.getMonth()+1,0)};
+  }
+  function prevRange(g){
+    if(RP==='week')return {s:addD(g.s,-7),e:addD(g.e,-7)};
+    return {s:new Date(g.s.getFullYear(),g.s.getMonth()-1,1),e:new Date(g.s.getFullYear(),g.s.getMonth(),0)};
+  }
+  function inRange(g,r){var a=fd(g.s),b=fd(g.e);return S.E.filter(function(x){return x.date>=a&&x.date<=b&&(r==='all'||String(x.r)===r)})}
+  function barList(it,tot){
+    var mx=Math.max.apply(null,it.map(function(x){return x.v}).concat([0]))||1;
+    return it.map(function(x){return '<div class="bar"><span class="n">'+esc(x.n)+'</span><span class="t"><i style="width:'+(x.v/mx*100)+'%"></i></span><b>'+money(x.v)+(tot?' <span class="m">'+(x.v/tot*100).toFixed(0)+'%</span>':'')+'</b></div>'}).join('');
+  }
+  function renderRep(){
+    var r=$('rrest').value||'all',g=range(),rows=inRange(g,r),pv=inRange(prevRange(g),r),t=sum(rows),pt=sum(pv);
+    var days=RP==='week'?7:g.e.getDate(),label=RP==='week'?'last week':'last month';
+    $('rtitle').textContent=(RP==='week'?'Week of '+short(g.s)+' – '+short(g.e)+', '+g.e.getFullYear():g.s.toLocaleDateString(undefined,{month:'long',year:'numeric'}))+' · '+(r==='all'?'All restaurants':rName(+r));
+    $('rTot').textContent=money(t);$('rCnt').textContent=rows.length;$('rAvg').textContent=money(t/days);
+    var ch=$('rChg');
+    if(pt>0){var c=(t-pt)/pt*100;ch.textContent=(c>=0?'+':'')+c.toFixed(1)+'%';ch.className=c>0?'bad':'ok'}
+    else{ch.textContent='–';ch.className=''}
+    $('rPrev').textContent=money(pt)+' '+label;
+    var tl=[];
+    if(RP==='week'){
+      $('rtlh').textContent='By day';
+      for(var i=0;i<7;i++){var d=addD(g.s,i),k=fd(d);tl.push({n:DN[i]+' '+d.getDate(),v:sum(rows.filter(function(x){return x.date===k}))})}
+    } else {
+      $('rtlh').textContent='By week';
+      for(var w=monday(g.s);w<=g.e;w=addD(w,7)){
+        var ws=w<g.s?g.s:w,we=addD(w,6)>g.e?g.e:addD(w,6),a=fd(ws),b=fd(we);
+        tl.push({n:short(ws)+(a===b?'':'–'+we.getDate()),v:sum(rows.filter(function(x){return x.date>=a&&x.date<=b}))});
+      }
+    }
+    $('rtl').innerHTML=barList(tl);
+    var by={};rows.forEach(function(x){by[x.cat]=(by[x.cat]||0)+x.amount});
+    var cats=Object.keys(by).sort(function(a,b){return by[b]-by[a]}).map(function(k){return {n:k,v:by[k]}});
+    $('rcat').innerHTML=cats.length?barList(cats,t):'<div class="empty">No expenses in this period.</div>';
+    $('rrestc').classList.toggle('hide',r!=='all');
+    $('rbyr').innerHTML=barList(S.names.map(function(n,i){return {n:n,v:sum(rows.filter(function(x){return x.r===i}))}}),t);
+    rows.sort(function(a,b){return a.date.localeCompare(b.date)});
+    $('rlist').innerHTML=rows.length?rows.map(function(x){
+      return '<div class="row"><div><b>'+esc(rName(x.r))+'</b><div class="m">'+esc(x.date)+' · '+esc(x.cat)+(x.note?' · '+esc(x.note):'')+'</div></div><span class="amt">'+money(x.amount)+'</span></div>'}).join(''):'<div class="empty">Nothing logged in this period.</div>';
+  }
+  function shift(n){
+    if(RP==='week')$('rweek').value=fd(addD(range().s,7*n));
+    else{var m=range().s;$('rmonth').value=fd(new Date(m.getFullYear(),m.getMonth()+n,1)).slice(0,7)}
+    renderRep();
+  }
+  $('rweek').value=fd(now);$('rmonth').value=ym;
+  $('rtype').addEventListener('click',function(e){
+    var p=e.target.getAttribute('data-p');if(!p)return;RP=p;
+    Array.prototype.forEach.call($('rtype').children,function(b){b.classList.toggle('on',b===e.target)});
+    $('rwk').classList.toggle('hide',p!=='week');$('rmo').classList.toggle('hide',p!=='month');
+    renderRep();
+  });
+  $('rrest').addEventListener('change',renderRep);$('rweek').addEventListener('change',renderRep);$('rmonth').addEventListener('change',renderRep);
+  $('rprev').addEventListener('click',function(){shift(-1)});$('rnext').addEventListener('click',function(){shift(1)});
+  $('rnow').addEventListener('click',function(){$('rweek').value=fd(new Date());$('rmonth').value=fd(new Date()).slice(0,7);renderRep()});
+  $('rprint').addEventListener('click',function(){window.print()});
+  $('rcsv').addEventListener('click',function(){
+    var g=range(),r=$('rrest').value||'all',rows=inRange(g,r).sort(function(a,b){return a.date.localeCompare(b.date)});
+    var csv=['Date,Restaurant,Category,Vendor / note,Amount'].concat(rows.map(function(x){return [x.date,q(rName(x.r)),q(x.cat),q(x.note||''),x.amount.toFixed(2)].join(',')}));
+    csv.push(',,,Total,'+sum(rows).toFixed(2));
+    saveFile('project369-'+RP+'ly-report-'+fd(g.s)+'.csv',csv.join('\n'));
+  });
+
+  /* ---------- history ---------- */
+  var hLimit=50, NM={};
+  var ACT={add:['Added','ok'],edit:['Edited','info'],delete:['Deleted','bad'],restore:['Restored','ok']};
+  var KN={expense:'expense',dish:'dish',settings:'settings'};
+  function when(iso){try{return new Date(iso).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'})}catch(e){return iso}}
+  function who(id){if(!id)return live?'Someone':'You';if(id===me)return 'You';return NM[id]||'…'}
+  function resolve(ids){
+    if(!ids.length)return;
+    ids.forEach(function(i){NM[i]='…'});
+    if(!user){ids.forEach(function(i){NM[i]='Someone'});return}
+    user.profiles(ids).then(function(ps){ids.forEach(function(i){var p=ps&&ps[i];NM[i]=(p&&p.isMe)?'You':((p&&p.name)||'Someone')});renderHist()}).catch(function(){ids.forEach(function(i){NM[i]='Someone'});renderHist()});
+  }
+  function histRows(){
+    var t=$('htype').value,a=$('hact').value,m=$('hmonth').value;
+    return S.L.filter(function(x){return (t==='all'||x.kind===t)&&(a==='all'||x.act===a)&&(!m||fd(new Date(x.at)).slice(0,7)===m)}).sort(function(p,q){return String(q.at).localeCompare(String(p.at))});
+  }
+  function renderHist(){
+    var rows=histRows(),shown=rows.slice(0,hLimit),ids=[];
+    shown.forEach(function(x){if(x.who&&x.who!==me&&!(x.who in NM)&&ids.indexOf(x.who)<0)ids.push(x.who)});
+    resolve(ids);
+    $('hlist').innerHTML=shown.length?shown.map(function(x){
+      var a=ACT[x.act]||[x.act,''],k=KIND[x.kind];
+      var canR=canWrite&&x.act==='delete'&&x.before&&k&&!find(S[k.key],x.before.id);
+      var ch=x.changes&&x.changes.length?'<div class="m chg">'+x.changes.map(esc).join('<br>')+'</div>':'';
+      return '<div class="row"><div><div><span class="tag '+a[1]+'">'+esc(a[0])+' '+esc(KN[x.kind]||'')+'</span> <b>'+esc(x.text||'')+'</b></div>'+ch+'<div class="m">'+esc(when(x.at))+' · '+esc(who(x.who))+'</div></div>'+(canR?'<button class="sec" data-h="'+esc(x.id)+'">Restore</button>':'')+'</div>';
+    }).join(''):'<div class="empty">No activity'+(S.L.length?' for this filter.':' yet. Changes will appear here as soon as anyone adds, edits or deletes something.')+'</div>';
+    $('hmore').classList.toggle('hide',rows.length<=hLimit);
+  }
+  ['htype','hact','hmonth'].forEach(function(i){$(i).addEventListener('change',function(){hLimit=50;renderHist()})});
+  $('hmore').addEventListener('click',function(){hLimit+=50;renderHist()});
+  $('hlist').addEventListener('click',function(e){
+    var id=e.target.getAttribute('data-h');if(!id)return;
+    var x=find(S.L,id);if(!x||!x.before)return;
+    $('hmsg').textContent='';e.target.disabled=true;
+    restoreItem(x).catch(function(err){e.target.disabled=false;fail('hmsg',err)});
+  });
+  $('hcsv').addEventListener('click',function(){
+    var csv=['When,Who,Action,Type,Entry,Changes'].concat(histRows().map(function(x){return [q(when(x.at)),q(who(x.who)),q((ACT[x.act]||[x.act])[0]),q(x.kind),q(x.text||''),q((x.changes||[]).join('; '))].join(',')}));
+    saveFile('project369-history-'+fd(new Date())+'.csv',csv.join('\n'));
+  });
+
+  function render(){renderExp();renderMenu();renderOv();renderRep();renderHist()}
+  function applyAccess(){
+    $('ecard').classList.toggle('hide',!canWrite);$('mcard').classList.toggle('hide',!canWrite);
+    if(!canWrite){endEditE();endEditM();$('mode').textContent='shared with your team · view only'}
+    render();
+  }
   fill();render();
 
   /* shared mode: lights up when the viewer can use the page database */
   if(window.claude&&claude.use){
-    Promise.all([claude.use('db').catch(function(){return null}),claude.use('assets').catch(function(){return null})]).then(function(r){
-      db=r[0];assets=r[1];$('rcwrap').classList.toggle('hide',!assets);
+    claude.use('downloads').then(function(d){dl=d}).catch(function(){});
+    Promise.all(['db','assets','user'].map(function(n){return claude.use(n).catch(function(){return null})})).then(function(r){
+      db=r[0];assets=r[1];user=r[2];$('rcwrap').classList.toggle('hide',!assets);
       if(!db)return;
-      live=true;S.E=[];S.M=[];$('mode').textContent='shared with your team · live';
-      var err=function(){live=false;$('mode').textContent='shared data unavailable'};
-      db.collection('expenses').onSnapshot(function(s){S.E=s.docs.map(row);renderExp();renderOv()},err);
-      db.collection('dishes').onSnapshot(function(s){S.M=s.docs.map(row);renderMenu();renderOv()},err);
-      db.doc('config/main').onSnapshot(function(s){if(s.exists){var c=s.data();if(c.names)S.names=c.names;if(c.target)S.target=c.target}fill();render()},err);
+      live=true;S.E=[];S.M=[];S.L=[];$('mode').textContent='loading shared data…';render();
+      var loaded=false,timer=setTimeout(function(){if(!loaded)$('mode').textContent='shared data is taking a while to load…'},10000);
+      function ok(){if(!loaded){loaded=true;clearTimeout(timer);$('mode').textContent=canWrite?'shared with your team · live':'shared with your team · view only'}}
+      var err=function(){clearTimeout(timer);$('mode').textContent='shared data unavailable'};
+      if(user){
+        Promise.all([user.id().catch(function(){return null}),user.can('data.write').catch(function(){return null})]).then(function(u){
+          me=u[0]||'';if(u[1]===false){canWrite=false}applyAccess();
+        });
+      }
+      db.collection('expenses').onSnapshot(function(s){ok();S.E=s.docs.map(row);renderExp();renderOv();renderRep();renderHist()},err);
+      db.collection('dishes').onSnapshot(function(s){ok();S.M=s.docs.map(row);renderMenu();renderOv();renderHist()},err);
+      db.collection('log').orderBy('at','desc').limit(1000).onSnapshot(function(s){ok();S.L=s.docs.map(row);renderHist()},err);
+      db.doc('config/main').onSnapshot(function(s){ok();if(s.exists){var c=s.data();if(c.names)S.names=c.names;if(c.target)S.target=c.target}fill();render()},err);
     });
   } else {$('rcwrap').classList.add('hide')}
 })();
