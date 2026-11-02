@@ -543,7 +543,7 @@ th{color:var(--muted);font-weight:600}
   function rName(r){var n=S.names[r];return (!n||/^Restaurant \d$/.test(n))?'Ресторан '+(+r+1):n}
   function inR(x){return R==='all'||x.r===R}
   function between(x,a,b){return x.date>=a&&x.date<=b}
-  function fail(el,e){var c=e&&e.code;$(el).textContent=c==='invalid_argument'?'У вас немає дозволу додавати чи змінювати дані. Попросіть власника надати вам доступ «Учасник» (Contributor).':c==='quota_exceeded'?'Сховище заповнене. Видаліть старі записи та спробуйте ще раз.':'Щось пішло не так. Спробуйте ще раз.'}
+  function fail(el,e){var c=e&&e.code;$(el).textContent=c==='invalid_argument'?'У вас немає дозволу додавати чи змінювати дані. Попросіть власника надати вам доступ «Редактор» (Editor) у меню «Поділитися».':c==='quota_exceeded'?'Сховище заповнене. Видаліть старі записи та спробуйте ще раз.':'Щось пішло не так. Спробуйте ще раз.'}
   function q(s){s=String(s==null?'':s);if(/^[=+\-@]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}
   function saveFile(name,data){
     data='﻿'+data;
