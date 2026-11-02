@@ -31,6 +31,7 @@ h1{font-size:1.45rem;margin:0}
 .nav3{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-self:end}
 @media (max-width:620px){
   .stk{grid-template-columns:minmax(0,1fr)}
+  .nav4{grid-template-columns:auto minmax(0,1fr) auto}.nav4>:last-child{grid-column:1/-1}
   .head .ctl{width:100%}.head .ctl>input,.head .ctl>select{flex:1 1 120px;width:auto}.head .ctl>button.grow{flex:1 0 auto}.head .ctl>input[type=date]{flex-basis:140px;min-width:140px}
   .rtabs{grid-template-columns:repeat(2,minmax(0,1fr))}.rtabs button:last-child{grid-column:1/-1}
   .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -51,7 +52,13 @@ label.chk{flex-direction:row;align-items:center;gap:8px;font-size:.9rem;color:va
 label.chk input{width:auto;height:auto}
 input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);width:100%;min-width:0;height:42px}
 input:disabled,select:disabled,input[readonly]{opacity:.65}
+input[type=date],input[type=month]{-webkit-appearance:none;appearance:none;display:block;max-width:100%;min-width:0;text-align:left;line-height:22px}
+input[type=date]::-webkit-date-and-time-value,input[type=month]::-webkit-date-and-time-value{text-align:left;margin:0}
+input::-webkit-datetime-edit{padding:0}
+label{overflow:hidden}label.chk{overflow:visible}
+.nav4{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:6px;align-items:center;margin-bottom:12px}
 textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text);width:100%;min-height:96px;resize:vertical}
+.xi{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:var(--bg)}.xi.unsure{border-color:var(--bad)}
 .qs{width:auto;height:34px;padding:4px 8px;font-size:.85rem}
 button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:var(--accent-t);font-weight:600;min-height:42px}
 button:disabled{opacity:.55;cursor:default}
@@ -289,25 +296,51 @@ th{color:var(--muted);font-weight:600}
     <div class="card wr" id="ecard">
       <div class="head"><h2 id="etitle">Додати витрату</h2></div>
       <form id="ef">
+        <label class="full" id="rcwrap"><span>Фото чека або PDF (необов’язково)</span><input type="file" id="ercpt" accept="image/*,application/pdf" style="height:auto"></label>
+        <button class="full sec hide" type="button" id="xscan">🧾 Розпізнати чек автоматично</button>
         <label><span>Дата</span><input type="date" id="edate" required></label>
         <label><span>Сума (<span class="cur"></span>)</span><input type="number" id="eamt" min="0" step="0.01" required></label>
         <label><span>Група</span><select id="eg"></select></label>
         <label><span>Категорія</span><select id="ec"></select></label>
         <label class="full" id="esw"><span>Підкатегорія продуктів</span><select id="es"></select></label>
         <label class="full"><span>Постачальник / примітка</span><input type="text" id="enote" placeholder="напр. оренда за листопад"></label>
-        <label class="full" id="rcwrap"><span>Фото чека або PDF (необов’язково)</span><input type="file" id="ercpt" accept="image/*,application/pdf" style="height:auto"></label>
         <div class="full note bad" id="emsg"></div>
         <button class="full" type="submit" id="esub">Додати витрату</button>
         <button class="full sec hide" type="button" id="ecancel">Скасувати редагування</button>
       </form>
     </div>
-    <div class="card">
-      <div class="head"><h2>Витрати</h2><div class="ctl"><select id="egf"></select><input type="month" id="mfilter"><button class="sec grow" id="mall" type="button">Усі місяці</button></div></div>
-      <div class="g2">
-        <div class="stat"><small id="eLbl">Усього</small><b id="eTot">0</b></div>
-        <div class="stat"><small>Записів</small><b id="eCnt">0</b></div>
+    <div class="card wr hide" id="xcard">
+      <div class="head"><h2>🧾 Перевірте розпізнаний чек</h2><button class="sec" id="xstop" type="button">Зупинити</button></div>
+      <div id="xstatus" class="m"></div>
+      <div id="xbody" class="hide">
+        <div class="g3">
+          <label><span>Постачальник</span><input type="text" id="xsup"></label>
+          <label><span>Дата</span><input type="date" id="xdate"></label>
+          <label><span>Сума на чеку (<span class="cur"></span>)</span><input type="number" step="0.01" id="xtotal"></label>
+        </div>
+        <div id="xitems" style="margin-top:14px"></div>
+        <button type="button" class="sec" id="xadd">+ Додати позицію</button>
+        <div id="xcheck" class="note"></div>
+        <label class="chk" id="xstockw" style="margin-top:10px"><input type="checkbox" id="xstock" checked> Оприбуткувати на склад позиції, пов’язані з товарами</label>
+        <div class="note bad" id="xmsg"></div>
+        <div class="g2" style="margin-top:12px"><button class="sec" id="xcancel" type="button">Скасувати</button><button id="xsave" type="button">Зберегти</button></div>
       </div>
-      <div id="cats" style="margin-top:14px"></div>
+    </div>
+    <div class="card">
+      <div class="seg g4" id="eper">
+        <button data-e="day">День</button><button data-e="week">Тиждень</button><button data-e="month" class="on">Місяць</button><button data-e="all">Усе</button>
+      </div>
+      <div class="nav4" id="enav"><button class="sec" id="eprev" aria-label="Попередній період">‹</button><input type="date" id="eref" aria-label="Дата"><button class="sec" id="enext" aria-label="Наступний період">›</button><button class="sec" id="enow">Сьогодні</button></div>
+      <div class="head"><h2 id="eptitle">Витрати</h2><div class="ctl"><select id="egf" aria-label="Група витрат"></select></div></div>
+      <div class="g3">
+        <div class="stat"><small>Усього</small><b id="eTot">0</b></div>
+        <div class="stat"><small>Записів</small><b id="eCnt">0</b></div>
+        <div class="stat"><small>Середнє за день</small><b id="eAvg">–</b></div>
+      </div>
+      <h3 class="m" id="etlh" style="margin:16px 0 6px;font-weight:600"></h3>
+      <div id="etl"></div>
+      <h3 class="m" style="margin:16px 0 6px;font-weight:600">За категоріями</h3>
+      <div id="cats"></div>
     </div>
     <div class="card"><div id="elist"></div></div>
   </section>
@@ -823,24 +856,59 @@ th{color:var(--muted);font-weight:600}
   }
   function fillES(s){var g=$('eg').value,l=g==='food'?subs($('ec').value):[];$('esw').classList.toggle('hide',!l.length);$('es').innerHTML='<option value="">— не вказано —</option>'+opts(l,s)}
   $('eg').addEventListener('change',function(){fillEC()});$('ec').addEventListener('change',function(){fillES()});
+  var EP='month';
+  function eRange(){
+    var d=pd($('eref').value||today());
+    if(EP==='day')return {a:fd(d),b:fd(d)};
+    if(EP==='week'){var m=monday(d);return {a:fd(m),b:fd(addD(m,6))}}
+    if(EP==='month')return {a:fd(new Date(d.getFullYear(),d.getMonth(),1)),b:fd(new Date(d.getFullYear(),d.getMonth()+1,0))};
+    return {a:'0000-00-00',b:'9999-99-99'};
+  }
+  function eTitle(g){
+    if(EP==='day')return longD(g.a);
+    if(EP==='week')return 'Тиждень '+short(pd(g.a))+' – '+short(pd(g.b));
+    if(EP==='month')return cap(pd(g.a).toLocaleDateString(LOC,{month:'long',year:'numeric'}));
+    return 'За весь час';
+  }
   function renderExp(){
     if(R==='all')return;
-    var mf=$('mfilter').value,gf=$('egf').value;
-    var rows=S.E.filter(function(x){return x.r===R&&(!mf||x.date.slice(0,7)===mf)&&(gf==='all'||x.g===gf)});
-    $('eLbl').textContent=mf?'Усього за місяць':'Усього за весь час';
-    $('eTot').textContent=money(sum(rows));$('eCnt').textContent=rows.length;
+    each($('eper').children,function(b){b.classList.toggle('on',b.getAttribute('data-e')===EP)});
+    $('enav').classList.toggle('hide',EP==='all');
+    var g=eRange(),gf=$('egf').value;
+    var rows=S.E.filter(function(x){return x.r===R&&between(x,g.a,g.b)&&(gf==='all'||x.g===gf)}),tot=sum(rows);
+    $('eptitle').textContent=eTitle(g);
+    $('eTot').textContent=money(tot);$('eCnt').textContent=rows.length;
+    var days=EP==='day'?1:EP==='week'?7:EP==='month'?pd(g.b).getDate():(function(){if(!rows.length)return 0;var ds=rows.map(function(x){return x.date}).sort();return Math.round((pd(ds[ds.length-1])-pd(ds[0]))/864e5)+1})();
+    $('eAvg').textContent=days&&EP!=='day'?money(tot/days):'–';
+    /* розбивка за часом */
+    var tl=[],lbl='';
+    if(EP==='week'){lbl='По днях';for(var i=0;i<7;i++){(function(k,dd){tl.push({n:DN[i]+', '+short(dd),v:sum(rows.filter(function(x){return x.date===k}))})})(fd(addD(pd(g.a),i)),addD(pd(g.a),i))}}
+    else if(EP==='month'){lbl='По тижнях';for(var w=monday(pd(g.a));fd(w)<=g.b;w=addD(w,7)){(function(ws,we){tl.push({n:short(pd(ws))+(ws===we?'':' – '+short(pd(we))),v:sum(rows.filter(function(x){return between(x,ws,we)}))})})(fd(w)<g.a?g.a:fd(w),fd(addD(w,6))>g.b?g.b:fd(addD(w,6)))}}
+    else if(EP==='all'){lbl='По місяцях';var bm={};rows.forEach(function(x){var k=x.date.slice(0,7);bm[k]=(bm[k]||0)+x.amount});tl=Object.keys(bm).sort().reverse().slice(0,12).map(function(k){return {n:cap(pd(k+'-01').toLocaleDateString(LOC,{month:'short',year:'numeric'})),v:bm[k]}})}
+    $('etlh').textContent=lbl;$('etlh').classList.toggle('hide',!tl.length);
+    $('etl').innerHTML=tl.length?barList(tl,tot||null):'';
     var by={};rows.forEach(function(x){var k=gf==='all'?egName(x.g):eLabel(x);by[k]=(by[k]||0)+x.amount});
     var ks=Object.keys(by).sort(function(a,b){return by[b]-by[a]});
-    $('cats').innerHTML=ks.length?barList(ks.map(function(k){return {n:k,v:by[k]}}),sum(rows)):'';
+    $('cats').innerHTML=ks.length?barList(ks.map(function(k){return {n:k,v:by[k]}}),tot):'<div class="empty">Немає витрат за цей період.</div>';
+    /* список, згрупований по днях, з підсумком дня */
     rows.sort(function(a,b){return (b.date+(b.at||'')).localeCompare(a.date+(a.at||''))});
-    $('elist').innerHTML=rows.length?rows.map(function(x){
+    var html='',last=null;
+    rows.forEach(function(x){
+      if(x.date!==last){last=x.date;var dt=sum(rows.filter(function(y){return y.date===x.date}));html+='<div class="grp"><span>'+esc(longD(x.date))+'</span><span>'+money(dt)+'</span></div>'}
       var rc=x.rc?' · <a href="/_blob/'+esc(x.rc)+'" target="_blank" rel="noopener">📎 Чек</a>':'';
-      return '<div class="row"><div><b>'+esc(eLabel(x))+'</b><div class="m">'+esc(x.date)+' · '+esc(egName(x.g))+(x.src==='delivery'?' · поставка':'')+(x.note?' · '+esc(x.note):'')+rc+'</div></div><div class="acts"><span class="amt">'+money(x.amount)+'</span> '+editBtns('ee','e',x.id)+'</div></div>'}).join(''):'<div class="empty">'+(mf?'Немає витрат за цей період. Натисніть «Усі місяці», щоб побачити старіші.':'Ще нічого не записано.')+'</div>';
+      html+='<div class="row"><div><b>'+esc(eLabel(x))+'</b><div class="m">'+esc(egName(x.g))+(x.src==='delivery'?' · поставка':x.src==='receipt'?' · з чека':'')+(x.note?' · '+esc(x.note):'')+rc+'</div></div><div class="acts"><span class="amt">'+money(x.amount)+'</span> '+editBtns('ee','e',x.id)+'</div></div>';
+    });
+    $('elist').innerHTML=html||'<div class="empty">Немає витрат за цей період.'+(EP!=='all'?' Оберіть «Усе», щоб побачити всі записи.':'')+'</div>';
   }
+  $('eper').addEventListener('click',function(e){var v=e.target.getAttribute('data-e');if(v){EP=v;renderExp()}});
+  function eShift(n){var d=pd($('eref').value||today());if(EP==='day')d=addD(d,n);else if(EP==='week')d=addD(d,7*n);else d=new Date(d.getFullYear(),d.getMonth()+n,1);$('eref').value=fd(d);renderExp()}
+  $('eprev').addEventListener('click',function(){eShift(-1)});$('enext').addEventListener('click',function(){eShift(1)});
+  $('enow').addEventListener('click',function(){$('eref').value=today();renderExp()});
+  $('eref').addEventListener('change',renderExp);
   function startEditE(id){
     var x=find(S.E,id);if(!x)return;editE=id;
     $('edate').value=x.date;$('eamt').value=x.amount;$('eg').value=x.g;fillEC(x.c,x.s);$('enote').value=x.note||'';$('ercpt').value='';
-    $('esub').textContent='Зберегти зміни';$('ecancel').classList.remove('hide');$('etitle').textContent='Редагувати витрату';$('ecard').classList.add('editing');$('emsg').textContent='';
+    $('esub').textContent='Зберегти зміни';$('ecancel').classList.remove('hide');$('etitle').textContent='Редагувати витрату';$('xscan').classList.add('hide');$('ecard').classList.add('editing');$('emsg').textContent='';
     $('ecard').scrollIntoView({behavior:'smooth',block:'start'});
   }
   function endEditE(){editE=null;if($('eg').value!=='food'){$('eg').value='food';fillEC()}$('eamt').value='';$('enote').value='';$('ercpt').value='';$('esub').textContent='Додати витрату';$('ecancel').classList.add('hide');$('etitle').textContent='Додати витрату';$('ecard').classList.remove('editing')}
@@ -864,8 +932,129 @@ th{color:var(--muted);font-weight:600}
     if((id=t.getAttribute('data-ee')))return startEditE(id);
     if((id=t.getAttribute('data-e'))){if(id===editE)endEditE();removeItem('expense',id).catch(function(err){fail('emsg',err)})}
   });
-  $('mfilter').addEventListener('change',renderExp);$('egf').addEventListener('change',renderExp);
-  $('mall').addEventListener('click',function(){$('mfilter').value='';renderExp()});
+  $('egf').addEventListener('change',renderExp);
+
+  /* ================= РОЗПІЗНАВАННЯ ЧЕКІВ ================= */
+  var SMP=null,SLIM=null,xctl=null,XF=null;
+  function catList(){
+    var l=[];
+    FOODK.forEach(function(k){l.push(['food|'+k+'|','Продукти: '+FG[k][0]]);subs(k).forEach(function(sb){l.push(['food|'+k+'|'+sb,'Продукти: '+FG[k][0]+' / '+sb])})});
+    ['ops','staff','prem'].forEach(function(g){EG[g][1].forEach(function(c){l.push([g+'|'+c+'|',EG[g][0]+': '+c])})});
+    return l;
+  }
+  function updScan(){var f=$('ercpt').files&&$('ercpt').files[0];$('xscan').classList.toggle('hide',!(SMP&&canWrite&&!editE&&f&&/^image\//.test(f.type)))}
+  $('ercpt').addEventListener('change',updScan);
+  function prepImages(f){
+    var max=Math.min(4,(SLIM&&SLIM.maxCount)||1);
+    return new Promise(function(res){
+      var url=URL.createObjectURL(f),im=new Image();
+      im.onload=function(){
+        var w=im.naturalWidth,h=im.naturalHeight,n=Math.min(max,Math.ceil(h/(w*1.8)));
+        if(n<=1){URL.revokeObjectURL(url);res([f]);return}
+        var ov=Math.round(h*0.04),step=Math.ceil(h/n),out=[],done=0;
+        for(var i=0;i<n;i++)(function(i){
+          var y0=Math.max(0,i*step-ov),y1=Math.min(h,(i+1)*step+ov),c=document.createElement('canvas');c.width=w;c.height=y1-y0;
+          c.getContext('2d').drawImage(im,0,y0,w,y1-y0,0,0,w,y1-y0);
+          c.toBlob(function(b){out[i]=b;if(++done===n){URL.revokeObjectURL(url);res(out.every(Boolean)?out:[f])}},'image/jpeg',0.92);
+        })(i);
+      };
+      im.onerror=function(){URL.revokeObjectURL(url);res([f])};
+      im.src=url;
+    });
+  }
+  function xPrompt(n){
+    var items=itemsOf(R);
+    return 'You are reading a purchase receipt or supplier invoice for a restaurant (usually Ukrainian; may be Russian, Polish or English).'
+      +(n>1?' The '+n+' images are consecutive vertical parts of ONE receipt, top to bottom, with small overlaps: do not count a line twice.':'')
+      +'\nExtract every purchased line exactly as printed. Reply with ONLY this JSON:\n{"supplier":string|null,"date":"YYYY-MM-DD"|null,"total":number|null,"items":[{"name":string,"qty":number|null,"unit":string|null,"sum":number,"cat":string,"stock":string|null,"unsure":boolean}]}'
+      +'\nRules:\n- sum = the line\'s final amount as printed (after any per-line discount). Copy the printed number; do not recompute it.'
+      +'\n- A discount for the whole receipt becomes its own item with a negative sum.'
+      +'\n- Do NOT output totals, subtotals, VAT/ПДВ/НДС lines, payment method, change (решта), card or fiscal info. Rounding only if it changes the amount paid (item "Заокруглення").'
+      +'\n- total = the final amount paid (СУМА / ДО СПЛАТИ / ВСЬОГО / РАЗОМ).'
+      +'\n- Weighed items such as "0,456 кг x 189,90" give qty 0.456 and unit "кг". unit must be one of: '+UNITS.join(', ')+' (map kg→кг, pcs/шт./pc→шт, l→л) or null.'
+      +'\n- name: a clean product name in the receipt\'s language, without article codes or barcodes. Expand obvious abbreviations.'
+      +'\n- Decimal separators on receipts are often commas; output JSON numbers with dots.'
+      +'\n- cat: choose exactly ONE code from this list (pick the most specific that fits):\n'+catList().map(function(c){return c[0]+' = '+c[1]}).join('\n')
+      +'\n- stock: if the line is clearly one of these stock items, put its id, else null. When matched and the units differ, convert qty into the stock item\'s unit (г→кг ÷1000, мл→л ÷1000):\n'+(items.length?items.map(function(x){return x.id+' = '+x.name+' ('+x.unit+')'}).join('\n'):'(no stock items)')
+      +'\n- unsure: true if any part of the line was hard to read.\n- Never invent lines or numbers. If the image is not a receipt, reply {"supplier":null,"date":null,"total":null,"items":[]}.';
+  }
+  function xErr(code){return {not_granted:'Розпізнавання не дозволено. Його можна ввімкнути в дозволах цієї сторінки.',sampling_disabled:'Розпізнавання недоступне для вашого облікового запису.',rate_limited:'Забагато запитів. Спробуйте ще раз за хвилину.',image_rejected:'Не вдалося відкрити фото. Спробуйте інше, чіткіше фото (JPG або PNG).',invalid_json:'Не вдалося розпізнати чек. Спробуйте ще раз або введіть вручну.',empty_completion:'Не вдалося розпізнати чек. Спробуйте чіткіше фото.',refused:'Не вдалося розпізнати це зображення.',session_expired:'Увійдіть у Claude ще раз.'}[code]||'Помилка зв’язку. Спробуйте ще раз.'}
+  function xShow(on){$('xcard').classList.toggle('hide',!on)}
+  $('xscan').addEventListener('click',function(){
+    var f=$('ercpt').files&&$('ercpt').files[0];if(!f||!SMP)return;
+    XF=f;xShow(true);$('xbody').classList.add('hide');$('xstop').classList.remove('hide');$('xmsg').textContent='';
+    $('xstatus').textContent='Читаю чек… зазвичай 10–40 секунд.';$('xscan').disabled=true;
+    xctl=new AbortController();
+    prepImages(f).then(function(imgs){return SMP.json(xPrompt(imgs.length),{images:imgs,signal:xctl.signal,modelTier:'default'})})
+    .then(function(res){xFill(res||{})})
+    .catch(function(e){
+      var c=e&&e.code;if(c==='cancelled'){xShow(false);return}
+      $('xstatus').innerHTML='<span class="bad">'+esc(xErr(c))+'</span>';$('xstop').classList.add('hide');
+      if(c==='not_granted'||c==='sampling_disabled'||c==='images_unavailable'){SMP=null;updScan()}
+    }).then(function(){$('xscan').disabled=false});
+  });
+  $('xstop').addEventListener('click',function(){if(xctl)xctl.abort();xShow(false)});
+  function xRow(it){
+    it=it||{};var cats=catList(),cv=cats.some(function(c){return c[0]===it.cat})?it.cat:'food|other|';
+    var st=itemsOf(R),sv=it.stock&&find(st,it.stock)?it.stock:'';
+    return '<div class="xi'+(it.unsure?' unsure':'')+'"><div class="g4">'
+      +'<label class="full"><span>Позиція'+(it.unsure?' <span class="bad">· перевірте</span>':'')+'</span><input type="text" data-k="name" value="'+esc(it.name||'')+'"></label>'
+      +'<label><span>Кількість</span><input type="number" step="any" min="0" data-k="qty" value="'+(it.qty!=null?it.qty:'')+'"></label>'
+      +'<label><span>Одиниця</span><select data-k="unit"><option value="">—</option>'+opts(UNITS,it.unit||'')+'</select></label>'
+      +'<label><span>Сума</span><input type="number" step="0.01" data-k="sum" value="'+(it.sum!=null?it.sum:'')+'"></label>'
+      +'<div style="align-self:end;text-align:right"><button type="button" class="ghost" data-xd aria-label="Прибрати позицію" title="Прибрати">✕</button></div>'
+      +'<label class="full"><span>Категорія</span><select data-k="cat">'+opts(cats,cv)+'</select></label>'
+      +'<label class="full"><span>Товар на складі</span><select data-k="stock"><option value="">— не оприбутковувати —</option>'+st.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===sv?' selected':'')+'>'+esc(x.name)+' ('+esc(x.unit)+')</option>'}).join('')+'</select></label>'
+      +'</div></div>';
+  }
+  function xFill(res){
+    var items=Array.isArray(res.items)?res.items:[];
+    $('xstop').classList.add('hide');
+    if(!items.length){$('xstatus').innerHTML='<span class="bad">На фото не знайдено позицій чека. Спробуйте чіткіше фото або введіть витрату вручну.</span>';return}
+    $('xsup').value=res.supplier||'';$('xdate').value=/^\d{4}-\d{2}-\d{2}$/.test(res.date||'')?res.date:($('edate').value||today());
+    $('xtotal').value=res.total!=null&&isFinite(res.total)?res.total:'';
+    $('xitems').innerHTML=items.map(function(it){return xRow({name:it.name,qty:+it.qty||null,unit:it.unit,sum:isFinite(+it.sum)?r2(+it.sum):null,cat:it.cat,stock:it.stock,unsure:!!it.unsure})}).join('');
+    var un=items.filter(function(i){return i.unsure}).length;
+    $('xstatus').textContent='Знайдено позицій: '+items.length+(un?' · '+un+' позначено для перевірки':'')+'. Перевірте та виправте за потреби.';
+    $('xbody').classList.remove('hide');xCheck();
+  }
+  function xRead(){var out=[];each($('xitems').children,function(d){var g=function(k){return d.querySelector('[data-k="'+k+'"]').value};out.push({name:g('name').trim(),qty:parseFloat(g('qty')),unit:g('unit'),sum:parseFloat(g('sum')),cat:g('cat'),stock:g('stock')})});return out}
+  function xCheck(){
+    var it=xRead(),s=it.reduce(function(t,x){return t+(isFinite(x.sum)?x.sum:0)},0),tot=parseFloat($('xtotal').value),bad=it.filter(function(x){return !isFinite(x.sum)}).length;
+    var ok=isFinite(tot)?Math.abs(s-tot)<=0.01+tot*0.001:null;
+    $('xcheck').innerHTML='Сума позицій: <b>'+money(s)+'</b>'+(isFinite(tot)?' · на чеку: <b>'+money(tot)+'</b> '+(ok?'<span class="ok">✓ збігається</span>':'<span class="bad">≠ різниця '+money(s-tot)+' — перевірте позиції</span>'):'')+(bad?' · <span class="bad">без суми: '+bad+'</span>':'');
+    var ns=it.filter(function(x){return x.stock}).length;$('xstockw').classList.toggle('hide',!ns);
+    $('xsave').textContent='Зберегти'+(it.length?' ('+it.length+' поз.)':'');
+  }
+  $('xitems').addEventListener('input',xCheck);$('xitems').addEventListener('change',xCheck);$('xtotal').addEventListener('input',xCheck);
+  $('xitems').addEventListener('click',function(e){if(e.target.hasAttribute('data-xd')){e.target.closest('.xi').remove();xCheck()}});
+  $('xadd').addEventListener('click',function(){$('xitems').insertAdjacentHTML('beforeend',xRow(null));xCheck()});
+  $('xcancel').addEventListener('click',function(){xShow(false)});
+  $('xsave').addEventListener('click',function(){
+    var it=xRead().filter(function(x){return isFinite(x.sum)&&x.sum!==0});
+    if(!it.length){$('xmsg').textContent='Немає позицій із сумою.';return}
+    var date=$('xdate').value||today(),sup=$('xsup').value.trim(),btn=$('xsave');
+    var gr={},order=[];
+    it.forEach(function(x){var k=x.cat;if(!gr[k]){var p=k.split('|');gr[k]={g:p[0],c:p[1],s:p[2]||'',amount:0,names:[]};order.push(k)}gr[k].amount+=x.sum;gr[k].names.push(x.name||'?')});
+    btn.disabled=true;$('xmsg').textContent='';
+    var up=(XF&&assets)?assets.upload(XF).then(function(r){return r.id}).catch(function(){return ''}):Promise.resolve('');
+    up.then(function(rc){
+      var at=new Date().toISOString(),chain=Promise.resolve(),nE=0,nM=0;
+      order.forEach(function(k){var x=gr[k];if(Math.abs(x.amount)<0.005)return;nE++;
+        var note=(sup?sup+' · ':'')+'чек: '+x.names.join(', ');if(note.length>180)note=note.slice(0,177)+'…';
+        var o={id:uid(),r:R,date:date,amount:r2(x.amount),g:x.g,c:x.c,s:x.g==='food'?x.s:'',note:note,rc:rc,at:at,src:'receipt'};
+        chain=chain.then(function(){return saveItem('expense',o,null)});
+      });
+      if($('xstock').checked)it.forEach(function(x){var s=x.stock&&find(S.I,x.stock);if(!s||!(x.qty>0)||x.sum<=0)return;nM++;
+        var cost=r2(x.sum/x.qty),m={id:uid(),s:s.id,r:s.r,type:'in',qty:x.qty,cost:cost,date:date,note:(sup?sup+' · ':'')+'з чека',at:at,n:s.name,u:s.unit};
+        chain=chain.then(function(){return saveItem('move',m,null)}).then(function(){var cur=find(S.I,s.id);if(cur&&cur.cost!==cost){var ni=cp(cur);ni.cost=cost;return saveItem('supply',ni,cur)}});
+      });
+      return chain.then(function(){
+        xShow(false);$('ercpt').value='';XF=null;updScan();
+        $('emsg').innerHTML='<span class="ok">✓ З чека збережено витрат: '+nE+(nM?' · оприбутковано на склад: '+nM:'')+'</span>';
+      });
+    }).catch(function(err){fail('xmsg',err)}).then(function(){btn.disabled=false});
+  });
 
   /* ================= МЕНЮ ================= */
   var editM=null;
@@ -1112,12 +1301,13 @@ th{color:var(--muted);font-weight:600}
     render();
   }
   var t0=today();
-  ['dday','sdate','edate','vdate','wdate','pdate','rweek'].forEach(function(i){$(i).value=t0});
-  ['dmonth','sfm','mfilter','rmonth'].forEach(function(i){$(i).value=t0.slice(0,7)});
+  ['dday','sdate','edate','vdate','wdate','pdate','rweek','eref'].forEach(function(i){$(i).value=t0});
+  ['dmonth','sfm','rmonth'].forEach(function(i){$(i).value=t0.slice(0,7)});
   fillEC();fillISub('');setWT('use');render();
 
   if(window.claude&&claude.use){
     claude.use('downloads').then(function(d){dl=d}).catch(function(){});
+    claude.use('sample').then(function(sm){if(!sm)return;return sm.limits().then(function(l){if(l&&l.images){SMP=sm;SLIM=l.images;updScan()}})}).catch(function(){});
     Promise.all(['db','assets','user'].map(function(n){return claude.use(n).catch(function(){return null})})).then(function(r){
       db=r[0];assets=r[1];user=r[2];$('rcwrap').classList.toggle('hide',!assets);
       if(!db){$('signin').classList.remove('hide');canWrite=false;canCfg=false;applyAccess();$('mode').textContent='ви не ввійшли в Claude';return}
