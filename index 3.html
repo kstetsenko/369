@@ -180,7 +180,7 @@ button.sec{background:var(--card);color:var(--text);border:1px solid var(--line)
 <script>
 (function(){
   var K='project369-v2', S={names:['Restaurant 1','Restaurant 2','Restaurant 3','Restaurant 4'],target:[30,30,30,30],E:[],M:[],L:[]};
-  var db=null, assets=null, user=null, dl=null, live=false, me='', canWrite=true;
+  var db=null, assets=null, user=null, dl=null, live=false, me='', canWrite=true, canCfg=true, LOGU={}, LOGS={};
   try{var d=JSON.parse(localStorage.getItem(K)||'null');if(d&&d.names){S=d;S.E=S.E||[];S.M=S.M||[];S.L=S.L||[]}}catch(e){}
   var $=function(i){return document.getElementById(i)};
 
@@ -215,7 +215,12 @@ button.sec{background:var(--card);color:var(--text);border:1px solid var(--line)
   /* ---------- activity log ---------- */
   function logIt(act,kind,text,before,after,changes){
     var o={id:uid(),at:new Date().toISOString(),who:me,act:act,kind:kind,text:text,before:before||null,after:after||null,changes:changes||[]};
-    if(live)return db.collection('log').doc(o.id).set(o).catch(function(){});
+    if(live){
+      /* each person writes only under log/<their id>/entries — nobody but the owner can alter someone else's history */
+      if(!me)return Promise.resolve();
+      var mine=db.collection('log').doc(me);
+      return (LOGU[me]?Promise.resolve():mine.set({u:me}).then(function(){LOGU[me]=1})).then(function(){return mine.collection('entries').doc(o.id).set(o)}).catch(function(){$('mode').textContent='change saved, but history entry failed'});
+    }
     S.L.push(o);saveLocal();renderHist();return Promise.resolve();
   }
   function eSum(x){return rName(x.r)+' · '+x.date+' · '+x.cat+' · '+money(x.amount)+(x.note?' · '+x.note:'')}
@@ -325,7 +330,7 @@ button.sec{background:var(--card);color:var(--text);border:1px solid var(--line)
   function renderOv(){
     var ae=document.activeElement;
     if(!(ae&&$('setup').contains(ae))){
-      $('setup').innerHTML=S.names.map(function(n,i){return '<div class="grid" style="margin-bottom:8px"><label>Name<input type="text" data-n="'+i+'" value="'+esc(n)+'"'+(canWrite?'':' disabled')+'></label><label>Target food cost %<input type="number" data-t="'+i+'" value="'+S.target[i]+'" min="5" max="90" step="1"'+(canWrite?'':' disabled')+'></label></div>'}).join('');
+      $('setup').innerHTML=S.names.map(function(n,i){return '<div class="grid" style="margin-bottom:8px"><label>Name<input type="text" data-n="'+i+'" value="'+esc(n)+'"'+(canCfg?'':' disabled')+'></label><label>Target food cost %<input type="number" data-t="'+i+'" value="'+S.target[i]+'" min="5" max="90" step="1"'+(canCfg?'':' disabled')+'></label></div>'}).join('')+(canCfg||!live?'':'<p class="note">Only editors can change restaurant names and targets.</p>');
     }
     var m=$('ovm').value,tot=S.names.map(function(n,i){return sum(S.E.filter(function(x){return x.r===i&&(!m||x.date.slice(0,7)===m)}))});
     var mx=Math.max.apply(null,tot.concat([1]));
@@ -476,13 +481,24 @@ button.sec{background:var(--card);color:var(--text);border:1px solid var(--line)
       function ok(){if(!loaded){loaded=true;clearTimeout(timer);$('mode').textContent=canWrite?'shared with your team · live':'shared with your team · view only'}}
       var err=function(){clearTimeout(timer);$('mode').textContent='shared data unavailable'};
       if(user){
-        Promise.all([user.id().catch(function(){return null}),user.can('data.write').catch(function(){return null})]).then(function(u){
-          me=u[0]||'';if(u[1]===false){canWrite=false}applyAccess();
+        Promise.all([user.id().catch(function(){return null}),user.can('data.write').catch(function(){return null}),user.canEdit().catch(function(){return null})]).then(function(u){
+          me=u[0]||'';if(u[1]===false){canWrite=false}if(u[2]===false){canCfg=false}applyAccess();
         });
-      }
+      } else {canCfg=false}
       db.collection('expenses').onSnapshot(function(s){ok();S.E=s.docs.map(row);renderExp();renderOv();renderRep();renderHist()},err);
       db.collection('dishes').onSnapshot(function(s){ok();S.M=s.docs.map(row);renderMenu();renderOv();renderHist()},err);
-      db.collection('log').orderBy('at','desc').limit(1000).onSnapshot(function(s){ok();S.L=s.docs.map(row);renderHist()},err);
+      /* history: one sub-log per person; subscribe to each (capped to stay within the 64-listener budget) */
+      db.collection('log').onSnapshot(function(s){
+        ok();
+        s.docs.forEach(function(d){
+          if(LOGU[d.id]==='sub'||Object.keys(LOGS).length>=50)return;
+          LOGU[d.id]='sub';LOGS[d.id]=[];
+          db.collection('log').doc(d.id).collection('entries').orderBy('at','desc').limit(500).onSnapshot(function(ss){
+            LOGS[d.id]=ss.docs.map(row);
+            S.L=[].concat.apply([],Object.keys(LOGS).map(function(k){return LOGS[k]}));renderHist();
+          },function(){});
+        });
+      },err);
       db.doc('config/main').onSnapshot(function(s){ok();if(s.exists){var c=s.data();if(c.names)S.names=c.names;if(c.target)S.target=c.target}fill();render()},err);
     });
   } else {$('rcwrap').classList.add('hide')}
