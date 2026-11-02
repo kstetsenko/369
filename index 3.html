@@ -814,7 +814,7 @@ th{color:var(--muted);font-weight:600}
 
   /* ================= ВИТРАТИ ================= */
   var editE=null;
-  $('eg').innerHTML=opts(['staff','prem','ops','food'].map(function(g){return [g,EG[g][0]]}));
+  $('eg').innerHTML=opts(['food','staff','prem','ops'].map(function(g){return [g,EG[g][0]]}));
   $('egf').innerHTML='<option value="all">Усі групи</option>'+opts(Object.keys(EG).map(function(g){return [g,EG[g][0]]}));
   function fillEC(c,s){
     var g=$('eg').value;
@@ -843,7 +843,7 @@ th{color:var(--muted);font-weight:600}
     $('esub').textContent='Зберегти зміни';$('ecancel').classList.remove('hide');$('etitle').textContent='Редагувати витрату';$('ecard').classList.add('editing');$('emsg').textContent='';
     $('ecard').scrollIntoView({behavior:'smooth',block:'start'});
   }
-  function endEditE(){editE=null;$('eamt').value='';$('enote').value='';$('ercpt').value='';$('esub').textContent='Додати витрату';$('ecancel').classList.add('hide');$('etitle').textContent='Додати витрату';$('ecard').classList.remove('editing')}
+  function endEditE(){editE=null;if($('eg').value!=='food'){$('eg').value='food';fillEC()}$('eamt').value='';$('enote').value='';$('ercpt').value='';$('esub').textContent='Додати витрату';$('ecancel').classList.add('hide');$('etitle').textContent='Додати витрату';$('ecard').classList.remove('editing')}
   $('ecancel').addEventListener('click',function(){endEditE();$('emsg').textContent=''});
   $('ef').addEventListener('submit',function(e){
     e.preventDefault();var a=parseFloat($('eamt').value);if(isNaN(a)||R==='all')return;
