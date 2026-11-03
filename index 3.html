@@ -77,6 +77,9 @@ textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radiu
 .gbtn .chev{display:inline-block;width:1.1em}
 .sbh{font-size:.78rem;font-weight:600;color:var(--accent);padding:10px 0 2px}
 .sbh+.row{border-top:0}
+.qe{background:transparent;color:var(--text);border:1px dashed var(--line);border-radius:8px;padding:2px 8px;min-height:0;font-weight:400;cursor:pointer}
+.qe:hover{border-color:var(--accent)}
+.mvt td:first-child{white-space:normal;min-width:96px}.mvt td,.mvt th{padding:5px 6px}
 .fbar{display:flex;justify-content:flex-end;gap:4px;margin:-4px 0 4px}
 .qs{width:auto;height:34px;padding:4px 8px;font-size:.85rem}
 button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:var(--accent-t);font-weight:600;min-height:42px}
@@ -338,7 +341,9 @@ th{color:var(--muted);font-weight:600}
 
     <div id="f-buy" class="hide">
       <div class="card">
-        <div class="head"><h2>Список закупівель</h2><button class="sec" id="bcsv" type="button">Експорт CSV</button></div>
+        <div class="head"><h2>Закупівлі</h2><div class="ctl"><button class="wr grow" id="bphoto" type="button">📷 Фото чека / накладної</button><button class="sec grow" id="bcsv" type="button">Експорт CSV</button></div></div>
+        <div class="hint wr">Купили товар? Сфотографуйте чек або накладну — товари, кількості та ціни розпізнаються автоматично. Після перевірки покупка запишеться у витрати, а товари — на склад з новими цінами.</div>
+        <h3 class="m" style="margin:4px 0 8px;font-weight:600">Що потрібно докупити (нижче мінімального залишку)</h3>
         <div id="blist"></div>
       </div>
     </div>
@@ -465,6 +470,9 @@ th{color:var(--muted);font-weight:600}
     <div class="card"><div class="head"><h2>Виручка і витрати по днях</h2></div><div id="rchart" data-chart></div></div>
     <div class="card"><div class="head"><h2>Продукти за групами</h2></div><div id="rfood"></div></div>
     <div class="card"><div class="head"><h2>Запаси: рух за період</h2></div><div id="rsup"></div></div>
+    <div class="card"><div class="head"><h2>Рух запасів по товарах</h2><button class="sec" id="rmvcsv" type="button">Експорт CSV</button></div>
+      <div class="hint">Поч. (залишок на початок) + Надх. (надійшло) − Вик. (використано) − Спис. (списано) ± Інв. (інвентаризація) = Кін. (залишок на кінець періоду).</div>
+      <div id="rmvsum" class="note" style="margin:0 0 8px"></div><div class="fbar" id="rmvfold"></div><div id="rmv"></div></div>
     <div class="card" id="rrestc"><div class="head"><h2>За ресторанами</h2></div><div class="tblw" id="rbyr"></div></div>
   </section>
 
@@ -805,7 +813,9 @@ th{color:var(--muted);font-weight:600}
   function fOpen(k,def){return k in FO?!!FO[k]:def}
   function gHead(k,open,title,right){return '<button type="button" class="grp gbtn" data-fk="'+k+'" aria-expanded="'+open+'"><span><span class="chev">'+(open?'▾':'▸')+'</span>'+title+'</span><span>'+right+'</span></button>'}
   function catMissing(items){var have={};items.forEach(function(x){have[x.name.toLowerCase()]=1});return S.G.filter(function(g){return !have[String(g.name).toLowerCase()]})}
+  var QE=null;
   function renderStock(items){
+    var ae0=document.activeElement;if(ae0&&ae0.tagName==='INPUT'&&$('ilist').contains(ae0))return;
     var miss=catMissing(items);
     $('catbar').innerHTML=miss.length&&canWrite?'<div class="hint row2"><span>У спільному списку товарів є <b>'+miss.length+'</b> позицій, яких ще немає в «'+esc(rName(R))+'».</span><button class="sec" type="button" id="catadd">Додати всі ('+miss.length+')</button></div>':'';
     var sq=$('isearch').value.trim().toLowerCase(),gf=$('igf').value;
@@ -822,11 +832,12 @@ th{color:var(--muted);font-weight:600}
       html+=its.map(function(x){
         var sh='';if(multi&&(x.sub||'')!==lastSub){lastSub=x.sub||'';sh='<div class="sbh">'+esc(lastSub||'Інше')+'</div>'}
         var h=onHand(x.id),det='';
+        if(QE===x.id)det+='<div class="detail" style="padding:10px 12px"><div class="g2 stk"><label><span>Фактичний залишок, '+esc(x.unit)+'</span><input type="number" step="any" min="0" inputmode="decimal" id="qev" value="'+fq(h).replace(/\s/g,'').replace(',','.')+'"></label><label><span>Станом на дату</span><input type="date" id="qed" value="'+today()+'"></label></div><p class="note" style="margin:6px 0 8px">Збережеться як інвентаризація одного товару (видно в «Інвентаризація» та «Історія»).</p><div class="g2"><button type="button" class="sec" id="qecancel">Скасувати</button><button type="button" id="qesave">Зберегти</button></div></div>';
         if(OPEN[x.id]){
           var mv=S.V.filter(function(m){return m.s===x.id}).sort(function(a,b){return (b.date+(b.at||'')).localeCompare(a.date+(a.at||''))}).slice(0,15);
           det='<div class="detail">'+(mv.length?mv.map(function(m){return '<div class="row"><div><b>'+esc(VERB[m.type])+' '+fq(m.qty)+' '+esc(x.unit)+'</b><div class="m">'+esc(m.date)+(m.type==='in'?' · '+money(m.cost)+'/'+esc(x.unit):'')+(m.note?' · '+esc(m.note):'')+'</div></div>'+(canWrite?'<button class="ghost" data-vd="'+esc(m.id)+'" aria-label="Видалити">✕</button>':'')+'</div>'}).join(''):'<div class="empty">Ще немає руху.</div>')+'</div>';
         }
-        return sh+'<div class="row"><div><b>'+esc(x.name)+'</b> '+(isLow(x)?'<span class="tag bad">Нижче норми</span>':'')+'<div class="m">'+(x.sub&&!multi?esc(x.sub)+' · ':'')+(x.cost>0?money(x.cost)+'/'+esc(x.unit):'<span class="bad">ціну не вказано</span>')+(x.par?' · мін. '+fq(x.par):'')+(x.supplier?' · '+esc(x.supplier):'')+'</div></div><div class="acts"><span class="m">залишок </span><span class="amt'+(h<0?' bad':'')+'">'+fq(h)+' '+esc(x.unit)+'</span><div class="m">'+money(Math.max(0,h)*x.cost)+'</div><button class="ghost" data-x="'+esc(x.id)+'" title="Рух товару" aria-label="Рух товару">🕘</button>'+editBtns('ie','id',x.id)+'</div></div>'+det;
+        return sh+'<div class="row"><div><b>'+esc(x.name)+'</b> '+(isLow(x)?'<span class="tag bad">Нижче норми</span>':'')+'<div class="m">'+(x.sub&&!multi?esc(x.sub)+' · ':'')+(x.cost>0?money(x.cost)+'/'+esc(x.unit):'<span class="bad">ціну не вказано</span>')+(x.par?' · мін. '+fq(x.par):'')+(x.supplier?' · '+esc(x.supplier):'')+'</div></div><div class="acts">'+(canWrite?'<button type="button" class="qe" data-qe="'+esc(x.id)+'" title="Змінити залишок"><span class="m">залишок </span><span class="amt'+(h<0?' bad':'')+'">'+fq(h)+' '+esc(x.unit)+'</span> ✎</button>':'<span class="m">залишок </span><span class="amt'+(h<0?' bad':'')+'">'+fq(h)+' '+esc(x.unit)+'</span>')+'<div class="m">'+money(Math.max(0,h)*x.cost)+'</div><button class="ghost" data-x="'+esc(x.id)+'" title="Рух товару" aria-label="Рух товару">🕘</button>'+editBtns('ie','id',x.id)+'</div></div>'+det;
       }).join('');
     });
     $('ilist').innerHTML=html||'<div class="empty">'+(items.length?'Нічого не знайдено.':'Ще немає товарів. Додайте перший у формі нижче.')+'</div>';
@@ -912,6 +923,19 @@ th{color:var(--muted);font-weight:600}
     chain.then(function(){return logIt('add','supply','Додано '+miss.length+' товарів зі спільного списку',null,null,miss.slice(0,20).map(function(g){return g.name}),R)})
       .then(function(){$('imsg').innerHTML='';renderFood()}).catch(function(err){btn.disabled=false;btn.textContent='Спробувати ще раз';fail('imsg',err)});
   });
+  function quickSave(btn){
+    var x=find(S.I,QE),act=parseFloat($('qev').value),date=$('qed').value||today();if(!x)return;
+    if(isNaN(act)||act<0){$('qev').focus();return}
+    var e=stockAt(date)[x.id]||0,diff=Math.round((act-e)*1000)/1000,at=new Date().toISOString(),mid=uid();
+    var line={s:x.id,n:x.name,u:x.unit,exp:e,act:act,diff:diff,cost:x.cost,mid:mid};
+    var doc={id:uid(),r:x.r,date:date,at:at,who:me,lines:[line],short:r2(Math.min(0,diff*x.cost)),over:r2(Math.max(0,diff*x.cost))};
+    btn.disabled=true;
+    put('moves','V',{id:mid,s:x.id,r:x.r,type:'count',qty:act,cost:x.cost,date:date,note:'Залишок оновлено',at:at,n:x.name,u:x.unit})
+      .then(function(){return put('counts','C',doc)})
+      .then(function(){return logIt('edit','count','Залишок оновлено: '+x.name+' · '+date,null,{id:doc.id},[x.name+': '+fq(e)+' → '+fq(act)+' '+x.unit],x.r)})
+      .then(function(){QE=null;document.activeElement&&document.activeElement.blur();renderFood()})
+      .catch(function(err){btn.disabled=false;fail('imsg',err)});
+  }
   function startEditI(id){
     var x=find(S.I,id);if(!x)return;editI=id;
     $('iname').value=x.name;$('igrp').value=x.grp;fillISub(x.sub);$('iunit').value=x.unit;$('icost').value=x.cost;$('ipar').value=x.par||0;$('isupp').value=x.supplier||'';
@@ -939,6 +963,9 @@ th{color:var(--muted);font-weight:600}
   $('foldbar').addEventListener('click',function(e){var v=e.target.getAttribute('data-fall');if(v==null)return;Object.keys(FG).forEach(function(g){FO['s:'+g]=v==='1'});saveFO();renderFood()});
   $('ilist').addEventListener('click',function(e){
     var fk=e.target.closest&&e.target.closest('[data-fk]');if(fk){var k=fk.getAttribute('data-fk');FO[k]=fk.getAttribute('aria-expanded')!=='true';saveFO();renderFood();return}
+    var qb=e.target.closest&&e.target.closest('[data-qe]');if(qb){var qid=qb.getAttribute('data-qe');QE=QE===qid?null:qid;renderFood();if(QE&&$('qev')){$('qev').focus();$('qev').select()}return}
+    if(e.target.id==='qecancel'){QE=null;renderFood();return}
+    if(e.target.id==='qesave'){quickSave(e.target);return}
     var t=e.target,id;
     if((id=t.getAttribute('data-x'))){OPEN[id]=!OPEN[id];return renderFood()}
     if((id=t.getAttribute('data-ie')))return startEditI(id);
@@ -950,7 +977,7 @@ th{color:var(--muted);font-weight:600}
   $('bcsv').addEventListener('click',function(){
     if(R==='all')return;
     var low=itemsOf(R).filter(isLow);
-    var csv=['Ресторан,Постачальник,Група,Товар,В наявності,Мін. залишок,Замовити,Одиниця,Орієнтовна сума'].concat(low.map(function(x){var n=x.par-onHand(x.id);return [q(rName(x.r)),q(x.supplier||''),q(fgName(x.grp)),q(x.name),fq(onHand(x.id)),fq(x.par),fq(n),q(x.unit),r2(n*x.cost)].join(',')}));
+    var csv=['Ресторан,Постачальник,Група,Товар,В наявності,Мін. залишок,Замовити,Одиниця,Орієнтовна сума'].concat(low.map(function(x){var n=x.par-onHand(x.id);return [q(rName(x.r)),q(x.supplier||''),q(fgName(x.grp)),q(x.name),q(fq(onHand(x.id))),q(fq(x.par)),q(fq(n)),q(x.unit),r2(n*x.cost)].join(',')}));
     saveFile('project369-zakupivli-'+today()+'.csv',csv.join('\n'));
   });
 
@@ -1148,6 +1175,7 @@ th{color:var(--muted);font-weight:600}
   $('ercpt').addEventListener('change',function(){updScan();var f=$('ercpt').files&&$('ercpt').files[0];
     if(autoScan&&f){autoScan=false;if(SMP&&/^image\//.test(f.type))$('xscan').click();else{$('emsg').innerHTML='<span class="m">Фото додано до витрати. Автоматичне розпізнавання працює з фото (JPG/PNG) у спільному режимі — заповніть суму вручну.</span>';$('eamt').focus()}}});
   $('vphoto').addEventListener('click',photoFlow);
+  $('bphoto').addEventListener('click',photoFlow);
   function prepImages(f){
     var max=Math.min(4,(SLIM&&SLIM.maxCount)||1);
     return new Promise(function(res){
@@ -1497,6 +1525,7 @@ th{color:var(--muted);font-weight:600}
     var topW=Object.keys(byW).sort(function(p,o){return byW[o]-byW[p]}).slice(0,3).map(function(k){return esc(k)+' ('+money(byW[k])+')'});
     $('rsup').innerHTML=mv.length?barList([{n:'Отримано',v:rec},{n:'Використано',v:use},{n:'Списано',v:wst}])+(wst>0?'<p class="note">Списання — '+pc(wst/(use+wst)*100)+' від витрачених запасів. Найбільше: '+topW.join(', ')+'.</p>':''):'<div class="empty">Немає руху запасів за цей період.</div>';
     var csr=S.C.filter(function(c){return between(c,a,b)&&inR(c)});if(csr.length)$('rsup').insertAdjacentHTML('beforeend','<p class="note">Інвентаризацій: '+csr.length+' · нестача <b class="bad">'+money(csr.reduce(function(t,c){return t+(c.short||0)},0))+'</b> · надлишок '+money(csr.reduce(function(t,c){return t+(c.over||0)},0))+'</p>');
+    renderMoveRep(a,b);
     $('rrestc').classList.toggle('hide',R!=='all');
     if(R==='all')$('rbyr').innerHTML='<table><tr><th>Ресторан</th><th>Виручка</th><th>Витрати</th><th>Прибуток</th><th>Собів.</th></tr>'+S.names.map(function(n,i){var x=fin(a,b,i),p=x.inc?x.food/x.inc*100:NaN;return '<tr><td>'+esc(rName(i))+'</td><td>'+money0(x.inc)+'</td><td>'+money0(x.exp)+'</td><td class="'+(x.pro<0?'bad':'')+'">'+money0(x.pro)+'</td><td class="'+(p>S.target[i]?'bad':'')+'">'+pc(p)+'</td></tr>'}).join('')+'</table>';
   }
@@ -1505,6 +1534,40 @@ th{color:var(--muted);font-weight:600}
     else{var m=range().s;$('rmonth').value=fd(new Date(m.getFullYear(),m.getMonth()+n,1)).slice(0,7)}
     renderRep();
   }
+  function mvRows(a,b){
+    var op=stockAt(fd(addD(pd(a),-1))),cl=stockAt(b),mv=S.V.filter(function(m){return m.r===R&&between(m,a,b)}),adj={};
+    S.C.filter(function(c){return c.r===R&&between(c,a,b)}).forEach(function(c){(c.lines||[]).forEach(function(l){adj[l.s]=(adj[l.s]||0)+(+l.diff||0)})});
+    return itemsOf(R).map(function(x){
+      var q=function(t){return mv.filter(function(m){return m.s===x.id&&m.type===t}).reduce(function(s,m){return s+m.qty},0)},v=function(t){return mv.filter(function(m){return m.s===x.id&&m.type===t}).reduce(function(s,m){return s+mval(m)},0)};
+      var o={x:x,op:op[x.id]||0,inn:q('in'),use:q('use'),waste:q('waste'),adj:adj[x.id]||0,cl:cl[x.id]||0,vin:v('in'),vuse:v('use'),vwaste:v('waste')};
+      o.any=o.op||o.inn||o.use||o.waste||o.adj||o.cl;return o;
+    }).filter(function(o){return o.any});
+  }
+  function sg(n){return n?(n>0?'+':'−')+fq(Math.abs(n)):'—'}
+  function renderMoveRep(a,b){
+    if(R==='all'){$('rmv').innerHTML='<div class="empty">Оберіть ресторан угорі, щоб побачити рух кожного товару.</div>';$('rmvsum').textContent='';$('rmvfold').innerHTML='';$('rmvcsv').classList.add('hide');return}
+    $('rmvcsv').classList.remove('hide');
+    var rows=mvRows(a,b),html='',ng=0;
+    var tv=function(k){return rows.reduce(function(s,o){return s+o[k]},0)},adjV=rows.reduce(function(s,o){return s+o.adj*o.x.cost},0),clV=rows.reduce(function(s,o){return s+Math.max(0,o.cl)*o.x.cost},0);
+    $('rmvsum').innerHTML=rows.length?'Надійшло <b>'+money(tv('vin'))+'</b> · використано <b>'+money(tv('vuse'))+'</b> · списано <b class="'+(tv('vwaste')?'bad':'')+'">'+money(tv('vwaste'))+'</b> · інвентаризація <b class="'+(adjV<0?'bad':'')+'">'+money(adjV)+'</b> · залишок на кінець <b>'+money(clV)+'</b>':'';
+    Object.keys(FG).forEach(function(g){
+      var its=rows.filter(function(o){return o.x.grp===g});if(!its.length)return;ng++;
+      var open=fOpen('r:'+g,rows.length<=12);
+      html+=gHead('r:'+g,open,esc(FG[g][0])+' · '+its.length,'');
+      if(!open)return;
+      html+='<div class="tblw"><table class="mvt"><tr><th>Товар</th><th title="Залишок на початок">Поч.</th><th title="Надійшло">+ Надх.</th><th title="Використано">− Вик.</th><th title="Списано">− Спис.</th><th title="Інвентаризація">± Інв.</th><th title="Залишок на кінець">Кін.</th></tr>'+its.map(function(o){
+        return '<tr><td>'+esc(o.x.name)+' <span class="m">'+esc(o.x.unit)+'</span></td><td>'+fq(o.op)+'</td><td class="ok">'+(o.inn?'+'+fq(o.inn):'—')+'</td><td>'+(o.use?'−'+fq(o.use):'—')+'</td><td class="'+(o.waste?'bad':'')+'">'+(o.waste?'−'+fq(o.waste):'—')+'</td><td class="'+(o.adj<0?'bad':'')+'">'+sg(o.adj)+'</td><td><b class="'+(o.cl<0?'bad':'')+'">'+fq(o.cl)+'</b></td></tr>'}).join('')+'</table></div>';
+    });
+    $('rmv').innerHTML=html||'<div class="empty">Немає руху запасів і залишків за цей період.</div>';
+    $('rmvfold').innerHTML=ng>1?'<button type="button" class="ghost" data-rall="1">Розгорнути все</button><button type="button" class="ghost" data-rall="0">Згорнути все</button>':'';
+  }
+  $('rmv').addEventListener('click',function(e){var fk=e.target.closest&&e.target.closest('[data-fk]');if(!fk)return;FO[fk.getAttribute('data-fk')]=fk.getAttribute('aria-expanded')!=='true';saveFO();renderRep()});
+  $('rmvfold').addEventListener('click',function(e){var v=e.target.getAttribute('data-rall');if(v==null)return;Object.keys(FG).forEach(function(g){FO['r:'+g]=v==='1'});saveFO();renderRep()});
+  $('rmvcsv').addEventListener('click',function(){
+    if(R==='all')return;var g=range(),a=fd(g.s),b=fd(g.e);
+    var csv=['Група,Товар,Одиниця,Початок,Надійшло,Використано,Списано,Інвентаризація,Кінець,Ціна за од.,Вартість на кінець'].concat(mvRows(a,b).map(function(o){return [q(fgName(o.x.grp)),q(o.x.name),q(o.x.unit),fq(o.op),fq(o.inn),fq(o.use),fq(o.waste),fq(o.adj),fq(o.cl),r2(o.x.cost),r2(Math.max(0,o.cl)*o.x.cost)].map(function(v){return typeof v==='string'&&v.charAt(0)!=='"'?q(v):v}).join(',')}));
+    saveFile('project369-rukh-zapasiv-'+a+'_'+b+'.csv',csv.join('\n'));
+  });
   $('rtype').addEventListener('click',function(e){
     var p=e.target.getAttribute('data-p');if(!p)return;RP=p;
     each($('rtype').children,function(b){b.classList.toggle('on',b===e.target)});

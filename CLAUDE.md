@@ -102,6 +102,8 @@ expenses in real time. The interface is in **Ukrainian**.
   - Each new screen gets a short `.hint` explaining what to do.
   - Empty states say what to do next.
   - Dashboard alerts link to the right screen through `go(section, foodSubTab)`.
+- **Stock quantities:** tapping "залишок … ✎" in Залишки opens a quick editor (`quickSave`) that saves a one-item stock count for a chosen date. Reports include "Рух запасів по товарах" (`mvRows`, `renderMoveRep`): opening + received − used − wasted ± count adjustments = closing, per product, with CSV.
+- **Purchase photos:** the receipt flow (`photoFlow`) is reachable from the dashboard, Надходження and Закупівлі.
 - **Long lists fold:** stock (Продукти → Залишки) and the stock-count sheet are grouped by food group with foldable headers (`gHead`, state saved in `localStorage` key `project369-fold`, keys `s:<group>` / `c:<group>`); open groups split into subcategory subheadings. Searching or filtering opens matching groups automatically.
 - **Permissions in the UI:** forms live in `.wr` cards and are hidden when `canWrite` is false. Settings and the restaurant margin need `canCfg` (Editor/owner).
 
