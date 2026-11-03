@@ -58,7 +58,8 @@ expenses in real time. The interface is in **Ukrainian**.
 | `expenses` | `E` | `r`, `date`, `amount`, `g` group (food/staff/prem/ops), `c` category (for food: food-group key; else a label), `s` food subcategory, `note`, `rc` receipt asset id, `src` (`delivery`/`receipt`), `at` |
 | `supplies` | `I` | `r`, `name`, `grp` food-group key, `sub`, `unit`, `cost` (current unit price), `par` (minimum stock), `supplier` |
 | `moves` | `V` | stock ledger: `s` supply id, `r`, `type` in/use/waste/count, `qty`, `cost` unit price at the time, `date`, `at`, `note`, `n`/`u` (name/unit snapshot), `sup` supplier, `b` prep batch id, `eid` linked expense |
-| `dishes` | `M` | `r`, `name`, `cost` manual plate cost, `price`, `tm` per-dish target margin % (optional), `ing` [{`s` supply id, `q` qty per portion}] |
+| `dishes` | `M` | `r`, `name`, `sec` menu section (one of `MS`), `w` portion weight g, `cost` manual plate cost (0 = unknown), `price`, `tm` per-dish target margin % (optional), `ing` [{`s` supply id, `q` qty per portion}] |
+| `catalog` | `G` | shared product list for all restaurants: `name`, `grp`, `sub`, `unit`. Each restaurant copies missing items into its own `supplies` with the "Додати всі" button in Склад (cost 0 = price unknown until the first delivery or receipt) |
 | `counts` | `C` | stock-count sessions: `r`, `date`, `at`, `who`, `lines` [{`s`,`n`,`u`,`exp`,`act`,`diff`,`cost`,`mid`}], `short`, `over` |
 | `closes` | `X` | id `<r>_<date>`: `closed`, `checks`, `note`, `who`, `at` |
 | `ideas` | `Q` | team suggestions: `area` screen, `prio` 1–3, `text`, `status` new/planned/done/declined, `reply`, `who`, `r`, `at` |
@@ -69,17 +70,18 @@ expenses in real time. The interface is in **Ukrainian**.
 - **Stock on hand is never stored.** `stockMap()`/`stockAt(date)` replay `moves` in date+time order: `in` adds, `use`/`waste` subtract, `count` sets the absolute quantity.
 - **Food cost % = food expenses (`g:'food'`) ÷ sales.** Deliveries become food expenses automatically, unless the box is unticked.
 - **Margin** = (price − plate cost) ÷ price. Plate cost comes from the recipe (`ing` × current supply `cost`), or the manual `cost` if there is no recipe. Suggested price = cost ÷ (1 − target margin), rounded up to 0.25.
+- **Unknown cost:** a dish with no recipe and `cost` 0, or with a recipe ingredient whose price is 0, has no cost (`hasCost()` false). It shows "Немає собівартості" and is left out of underpriced alerts and break-even.
 - **Old records:** `normE` and `normI` map old English category fields (`cat`) to the current model. Keep them.
 
 ## Code map (inside the `<script>` IIFE)
 
 | Area | Main functions |
 |---|---|
-| Reference lists | `FG` food groups → subcategories, `EG` expense groups, `CH` sales channels, `UNITS` |
+| Reference lists | `FG` food groups → subcategories, `EG` expense groups, `MS` menu sections, `CH` sales channels, `UNITS` |
 | Storage | `put` / `del` (shared db or local), `saveCfg` |
 | History | `logIt`, `saveItem` / `removeItem` / `restoreItem` (**every user-facing write goes through these**, so it is logged), field maps `PF EF DF IF VF` for "what changed" diffs |
 | Navigation | `R` restaurant (0–3 or `'all'`), `T` section, `FT` food sub-tab; `SECS` lists sections per mode; `render()` draws only the visible section |
-| Sections | `renderDash` (day/month KPIs, chart, alerts, `renderClose`), `renderSales`, `renderFood` → `renderStock/In/Prep/Count/Price/Buy`, `renderExp` (day/week/month/all), receipt recognition (`xPrompt`, `prepImages`, `xFill`, `xsave`), `renderMenu`, `renderRep` (P&L), `renderHist`, `renderIdeas`, `renderSet` |
+| Sections | `renderDash` (day/month KPIs, chart, alerts, `renderClose`), `renderSales`, `renderFood` → `renderStock/In/Prep/Count/Price/Buy`, `renderExp` (day/week/month/all), receipt recognition (`photoFlow` opens the camera/gallery from the dashboard or Deliveries and starts recognition automatically; `xPrompt`, `prepImages`, `xFill`, `xsave`; review rows can match stock or create a new stock item with `__new`), `renderMenu`, `renderRep` (P&L), `renderHist`, `renderIdeas`, `renderSet` |
 | Shared mode | the bottom block subscribes once per collection with `onSnapshot`; history subscribes per user (capped at 50 people to stay under 64 listeners) |
 
 ## UI conventions
@@ -101,6 +103,10 @@ expenses in real time. The interface is in **Ukrainian**.
   - Empty states say what to do next.
   - Dashboard alerts link to the right screen through `go(section, foodSubTab)`.
 - **Permissions in the UI:** forms live in `.wr` cards and are hidden when `canWrite` is false. Settings and the restaurant margin need `canCfg` (Editor/owner).
+
+## Business data
+
+Real data (Bursak menu, product lists, prices) lives only in the artifact's database. Import it with `ArtifactData` `batch` (max 50 writes per call) from JSON files kept in the session scratchpad, never from files committed to this repo. Check what already exists first, so nothing is duplicated.
 
 ## Handling team suggestions
 
