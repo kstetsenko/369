@@ -400,6 +400,18 @@ th{color:var(--muted);font-weight:600}
         <div class="stat"><small>Точка беззбитковості</small><b id="oBe">–</b><span class="m" id="oBeN"></span></div>
       </div>
     </div>
+    <div class="card wr" id="rpcard">
+      <div class="head"><h2>📷 Рецепт з фото</h2><button type="button" id="rpbtn">Сфотографувати рецепт</button></div>
+      <div class="hint" id="rphint" style="margin-bottom:0">Сфотографуйте технологічну карту або сторінку з рецептами — Claude прочитає страви, інгредієнти й кількості, зіставить їх із меню та складом. Ви перевіряєте все перед збереженням.</div>
+      <input type="file" id="rpfile" accept="image/*" class="hide">
+      <div id="rpstatus" class="m" style="margin-top:10px"></div>
+      <div id="rpbody" class="hide" style="margin-top:12px">
+        <div id="rplist"></div>
+        <label class="chk"><input type="checkbox" id="rpcat" checked> Нові продукти додати також до спільного списку для всіх ресторанів</label>
+        <div class="note bad" id="rpmsg"></div>
+        <div class="g2" style="margin-top:12px"><button class="sec" id="rpcancel" type="button">Скасувати</button><button id="rpsave" type="button">Зберегти рецепти</button></div>
+      </div>
+    </div>
     <div class="card wr" id="mcard">
       <div class="head"><h2 id="mtitle">Додати страву</h2></div>
       <form id="mf">
@@ -1234,6 +1246,119 @@ th{color:var(--muted);font-weight:600}
     }).catch(function(err){fail('xmsg',err)}).then(function(){btn.disabled=false});
   });
 
+  /* ================= РЕЦЕПТ З ФОТО ================= */
+  var rpctl=null,RPF=null;
+  function updRp(){$('rpbtn').disabled=!SMP;if(!SMP)$('rpstatus').textContent='Розпізнавання фото доступне, коли сторінку відкрито в Claude.';else if($('rpstatus').textContent.indexOf('доступне')>=0)$('rpstatus').textContent=''}
+  function conv(q,from,to){if(!from||from===to)return q;if(from==='г'&&to==='кг'||from==='мл'&&to==='л')return q/1000;if(from==='кг'&&to==='г'||from==='л'&&to==='мл')return q*1000;return q}
+  var FGK=Object.keys(FG);
+  function rpPrompt(n){
+    var items=itemsOf(R),ds=S.M.filter(function(x){return x.r===R});
+    return 'You are reading a restaurant recipe sheet or technological card (usually handwritten, in Ukrainian or Russian). One photo may contain several dishes.'
+      +(n>1?' The '+n+' images are consecutive parts of ONE page, top to bottom, with small overlaps: do not repeat lines.':'')
+      +'\nReply with ONLY this JSON:\n{"dishes":[{"name":string,"dish":string|null,"section":string|null,"portions":number,"portion_g":number|null,"items":[{"name":string,"qty":number,"unit":string,"group":string,"stock":string|null,"unsure":boolean}]}]}'
+      +'\nRules:\n- name: the dish name in Ukrainian (translate from Russian if needed).'
+      +'\n- dish: if it is clearly the same as one of these menu dishes, its id; else null:\n'+(ds.length?ds.map(function(x){return x.id+' = '+x.name}).join('\n'):'(no dishes)')
+      +'\n- section: the best fit from: '+MS.join(', ')+'; or null.'
+      +'\n- portions: how many portions the written quantities make ("Выход 10 п" / "вихід 10 порцій" → 10; "1 порция" → 1; default 1).'
+      +'\n- portion_g: weight of ONE portion in grams if written ("Порция 0,300" → 300; "выход 0,230" → 230), else null.'
+      +'\n- items: every ingredient line. qty exactly as written for the whole batch (do NOT divide by portions). Fractions like 1/4 → 0.25. Decimal weights like 0,030 are kilograms → unit "кг". unit must be one of: '+UNITS.join(', ')+'.'
+      +'\n- ingredient name in Ukrainian (курица→курка, лук→цибуля, укроп→кріп, сливки→вершки, мука→борошно, яйцо→яйця, специи→спеції, масло растительное→олія).'
+      +'\n- group: one of '+FGK.join(', ')+' (meat, fish, veg = vegetables/fruit/herbs, dairy = milk/cheese/eggs, dry = dry goods/oil/spices/sauces, bread, frozen, bev, other, nf = not food).'
+      +'\n- stock: if the ingredient is clearly one of these stock items, its id, else null. When matched, convert qty into that item\'s unit (г→кг ÷1000, мл→л ÷1000):\n'+(items.length?items.map(function(x){return x.id+' = '+x.name+' ('+x.unit+')'}).join('\n'):'(no stock items)')
+      +'\n- unsure: true if the line was hard to read.\n- Lines that only state the yield are not ingredients. Never invent dishes, ingredients or numbers. If the image is not a recipe, reply {"dishes":[]}.';
+  }
+  $('rpbtn').addEventListener('click',function(){if(!SMP||R==='all')return;$('rpfile').value='';$('rpfile').click()});
+  $('rpfile').addEventListener('change',function(){
+    var f=$('rpfile').files&&$('rpfile').files[0];if(!f||!SMP)return;
+    if(!/^image\//.test(f.type)){$('rpstatus').innerHTML='<span class="bad">Потрібне фото (JPG або PNG).</span>';return}
+    RPF=f;$('rpbody').classList.add('hide');$('rpmsg').textContent='';$('rpbtn').disabled=true;
+    $('rpstatus').textContent='Читаю рецепт… зазвичай 10–40 секунд.';
+    rpctl=new AbortController();
+    prepImages(f).then(function(imgs){return SMP.json(rpPrompt(imgs.length),{images:imgs,signal:rpctl.signal,modelTier:'default'})})
+    .then(function(res){rpFill(res||{})})
+    .catch(function(e){var c=e&&e.code;if(c==='cancelled'){$('rpstatus').textContent='';return}
+      $('rpstatus').innerHTML='<span class="bad">'+esc(xErr(c).replace('чек','рецепт'))+'</span>';
+      if(c==='not_granted'||c==='sampling_disabled'||c==='images_unavailable'){SMP=null;updRp()}})
+    .then(function(){$('rpbtn').disabled=!SMP});
+  });
+  function rpStockOpts(sel){var st=itemsOf(R);return '<option value="">— пропустити —</option><option value="__new"'+(sel==='__new'?' selected':'')+'>➕ Новий продукт на склад</option>'+st.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+' ('+esc(x.unit)+')</option>'}).join('')}
+  function rpIng(it){
+    it=it||{};var st=it.stock&&find(itemsOf(R),it.stock)?it.stock:'__new';
+    return '<div class="rpi" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end;margin-bottom:8px;padding-top:8px;border-top:1px solid var(--line)'+(it.unsure?';background:transparent':'')+'" data-grp="'+esc(FG[it.group]?it.group:'other')+'">'
+      +'<label><span>Інгредієнт'+(it.unsure?' <span class="bad">· перевірте</span>':'')+'</span><input type="text" data-k="name" value="'+esc(it.name||'')+'"></label>'
+      +'<label><span>Кількість</span><input type="number" step="any" min="0" data-k="qty" value="'+(it.qty!=null?it.qty:'')+'"></label>'
+      +'<label><span>Од.</span><select data-k="unit">'+opts(UNITS,it.unit||'кг')+'</select></label>'
+      +'<button type="button" class="ghost" data-rpx aria-label="Прибрати інгредієнт" title="Прибрати">✕</button>'
+      +'<label style="grid-column:1/-1"><span>Продукт на складі</span><select data-k="stock">'+rpStockOpts(st)+'</select></label></div>';
+  }
+  function rpDish(d){
+    var ds=S.M.filter(function(x){return x.r===R}).sort(function(a,b){return a.name.localeCompare(b.name,LOC)}),dm=d.dish&&find(ds,d.dish)?d.dish:'';
+    var sec=MS.indexOf(d.section)>=0?d.section:'';
+    return '<div class="xi rpd"><div class="g2">'
+      +'<label class="full"><span>Назва страви</span><input type="text" data-d="name" value="'+esc(d.name||'')+'"></label>'
+      +'<label class="full"><span>Страва в меню</span><select data-d="dish"><option value="">➕ Нова страва</option>'+ds.map(function(x){return '<option value="'+esc(x.id)+'"'+(x.id===dm?' selected':'')+'>'+esc(x.name)+(x.ing&&x.ing.length?' (рецепт буде замінено)':'')+'</option>'}).join('')+'</select></label>'
+      +'<label><span>Розділ (для нової)</span><select data-d="sec"><option value="">— без розділу —</option>'+opts(MS,sec)+'</select></label>'
+      +'<label><span>Порцій у записі</span><input type="number" min="1" step="1" data-d="portions" value="'+(d.portions>0?d.portions:1)+'"></label>'
+      +'<label><span>Вихід порції, г</span><input type="number" min="0" step="1" data-d="w" value="'+(d.portion_g>0?Math.round(d.portion_g):'')+'"></label>'
+      +'<div style="align-self:end;text-align:right"><button type="button" class="sec" data-rpdx style="min-height:36px;white-space:nowrap">✕ Прибрати</button></div>'
+      +'</div><div class="m" style="margin:10px 0 4px">Інгредієнти — кількість як у записі (на всі порції); при збереженні поділимо на кількість порцій.</div>'
+      +'<div class="rpis">'+(d.items||[]).map(rpIng).join('')+'</div><button type="button" class="sec" data-rpadd>+ Інгредієнт</button></div>';
+  }
+  function rpFill(res){
+    var ds=Array.isArray(res.dishes)?res.dishes.filter(function(d){return d&&(d.items||[]).length}):[];
+    if(!ds.length){$('rpstatus').innerHTML='<span class="bad">На фото не знайдено рецептів. Спробуйте чіткіше фото або додайте рецепт вручну нижче.</span>';return}
+    ds.forEach(function(d){(d.items||[]).forEach(function(i){i.qty=+i.qty;if(!isFinite(i.qty))i.qty=null})});
+    var un=0;ds.forEach(function(d){(d.items||[]).forEach(function(i){if(i.unsure)un++})});
+    $('rplist').innerHTML=ds.map(rpDish).join('');
+    $('rpstatus').textContent='Знайдено страв: '+ds.length+(un?' · рядків для перевірки: '+un:'')+'. Перевірте зіставлення та кількості, потім збережіть.';
+    $('rpbody').classList.remove('hide');$('rpsave').disabled=false;
+  }
+  $('rplist').addEventListener('click',function(e){
+    var t=e.target;
+    if(t.hasAttribute('data-rpx')){t.closest('.rpi').remove();return}
+    if(t.hasAttribute('data-rpdx')){t.closest('.rpd').remove();if(!$('rplist').children.length){$('rpbody').classList.add('hide');$('rpstatus').textContent=''}return}
+    if(t.hasAttribute('data-rpadd')){t.previousElementSibling.insertAdjacentHTML('beforeend',rpIng({}))}
+  });
+  $('rpcancel').addEventListener('click',function(){$('rpbody').classList.add('hide');$('rplist').innerHTML='';$('rpstatus').textContent='';$('rpmsg').textContent=''});
+  $('rpsave').addEventListener('click',function(){
+    if(R==='all')return;var btn=$('rpsave'),cards=$('rplist').querySelectorAll('.rpd');
+    var NEW={},newList=[],plans=[];
+    each(cards,function(c){
+      var g=function(k){return c.querySelector('[data-d="'+k+'"]').value};
+      var p=Math.max(1,parseFloat(g('portions'))||1),name=g('name').trim();if(!name)return;
+      var ing=[];
+      each(c.querySelectorAll('.rpi'),function(r){
+        var v=function(k){return r.querySelector('[data-k="'+k+'"]').value},q=parseFloat(v('qty')),st=v('stock'),nm=v('name').trim(),u=v('unit');
+        if(!(q>0)||!st)return;
+        var item=null;
+        if(st==='__new'){
+          if(!nm)return;var key=nm.toLowerCase();
+          item=S.I.filter(function(y){return y.r===R&&y.name.toLowerCase()===key})[0]||NEW[key];
+          if(!item){item={id:uid(),r:R,name:nm,grp:r.getAttribute('data-grp')||'other',sub:'',unit:u||'кг',cost:0,par:0,supplier:''};NEW[key]=item;newList.push(item)}
+        } else item=find(S.I,st);
+        if(!item)return;
+        ing.push({s:item.id,q:Math.round(conv(q,u,item.unit)/p*10000)/10000});
+      });
+      if(ing.length)plans.push({dish:g('dish'),name:name,sec:g('sec'),w:parseFloat(g('w'))||null,ing:ing});
+    });
+    if(!plans.length){$('rpmsg').textContent='Немає жодного інгредієнта з кількістю та продуктом.';return}
+    btn.disabled=true;$('rpmsg').textContent='';
+    var chain=Promise.resolve(),toCat=$('rpcat').checked;
+    newList.forEach(function(it){chain=chain.then(function(){return saveItem('supply',it,null)}).then(function(){
+      if(toCat&&!S.G.some(function(g){return String(g.name).toLowerCase()===it.name.toLowerCase()}))return put('catalog','G',{id:uid(),name:it.name,grp:it.grp,sub:it.sub,unit:it.unit});
+    })});
+    var nU=0,nN=0;
+    plans.forEach(function(pl){chain=chain.then(function(){
+      var b=pl.dish&&find(S.M,pl.dish);
+      if(b){nU++;var o=cp(b);o.ing=pl.ing;if(pl.w&&!b.w)o.w=pl.w;return saveItem('dish',o,b)}
+      nN++;return saveItem('dish',{id:uid(),r:R,name:pl.name,sec:pl.sec,w:pl.w,cost:0,price:0,ing:pl.ing,tm:null},null);
+    })});
+    chain.then(function(){
+      $('rpbody').classList.add('hide');$('rplist').innerHTML='';
+      $('rpstatus').innerHTML='<span class="ok">✓ Збережено рецептів: '+(nU+nN)+(nU?' (оновлено страв у меню: '+nU+')':'')+(nN?' · нових страв: '+nN:'')+(newList.length?' · нових продуктів на складі: '+newList.length:'')+'</span>'+(newList.length?'<br><span class="m">Вкажіть ціни нових продуктів у «Продукти → Склад» або вони підтягнуться з першої поставки чи чека.</span>':'');
+    }).catch(function(err){fail('rpmsg',err)}).then(function(){btn.disabled=false});
+  });
+
   /* ================= МЕНЮ ================= */
   var editM=null;
   function tmOf(x){return x&&x.tm?x.tm:100-(S.target[x?x.r:R]||30)}
@@ -1508,11 +1633,11 @@ th{color:var(--muted);font-weight:600}
   var t0=today();
   ['dday','sdate','edate','vdate','wdate','pdate','rweek','eref','cdate'].forEach(function(i){$(i).value=t0});
   ['dmonth','sfm','rmonth'].forEach(function(i){$(i).value=t0.slice(0,7)});
-  fillEC();fillISub('');setWT('use');render();
+  fillEC();fillISub('');setWT('use');updRp();render();
 
   if(window.claude&&claude.use){
     claude.use('downloads').then(function(d){dl=d}).catch(function(){});
-    claude.use('sample').then(function(sm){if(!sm)return;return sm.limits().then(function(l){if(l&&l.images){SMP=sm;SLIM=l.images;updScan()}})}).catch(function(){});
+    claude.use('sample').then(function(sm){if(!sm)return;return sm.limits().then(function(l){if(l&&l.images){SMP=sm;SLIM=l.images;updScan();updRp()}})}).catch(function(){});
     Promise.all(['db','assets','user'].map(function(n){return claude.use(n).catch(function(){return null})})).then(function(r){
       db=r[0];assets=r[1];user=r[2];$('rcwrap').classList.toggle('hide',!assets);
       if(!db){$('signin').classList.remove('hide');canWrite=false;canCfg=false;applyAccess();$('mode').textContent='ви не ввійшли в Claude';return}
