@@ -59,7 +59,7 @@ expenses in real time. The interface is in **Ukrainian**.
 | `supplies` | `I` | `r`, `name`, `grp` food-group key, `sub`, `unit`, `cost` (current unit price), `par` (minimum stock), `supplier` |
 | `moves` | `V` | stock ledger: `s` supply id, `r`, `type` in/use/waste/count, `qty`, `cost` unit price at the time, `date`, `at`, `note`, `n`/`u` (name/unit snapshot), `sup` supplier, `b` prep batch id, `eid` linked expense |
 | `dishes` | `M` | `r`, `name`, `sec` menu section (one of `MS`), `w` portion weight g, `cost` manual plate cost (0 = unknown), `price`, `tm` per-dish target margin % (optional), `ing` [{`s` supply id, `q` qty per portion}] |
-| `catalog` | `G` | shared product list for all restaurants: `name`, `grp`, `sub`, `unit`. Each restaurant copies missing items into its own `supplies` with the "Додати всі" button in Склад (cost 0 = price unknown until the first delivery or receipt) |
+| `catalog` | `G` | shared product list for all restaurants: `name`, `grp`, `sub`, `unit`. Each restaurant copies missing items into its own `supplies` with the "Додати всі" button in Продукти → Залишки (cost 0 = price unknown until the first delivery or receipt) |
 | `counts` | `C` | stock-count sessions: `r`, `date`, `at`, `who`, `lines` [{`s`,`n`,`u`,`exp`,`act`,`diff`,`cost`,`mid`}], `short`, `over` |
 | `closes` | `X` | id `<r>_<date>`: `closed`, `checks`, `note`, `who`, `at` |
 | `ideas` | `Q` | team suggestions: `area` screen, `prio` 1–3, `text`, `status` new/planned/done/declined, `reply`, `who`, `r`, `at` |
@@ -102,6 +102,7 @@ expenses in real time. The interface is in **Ukrainian**.
   - Each new screen gets a short `.hint` explaining what to do.
   - Empty states say what to do next.
   - Dashboard alerts link to the right screen through `go(section, foodSubTab)`.
+- **Long lists fold:** stock (Продукти → Залишки) and the stock-count sheet are grouped by food group with foldable headers (`gHead`, state saved in `localStorage` key `project369-fold`, keys `s:<group>` / `c:<group>`); open groups split into subcategory subheadings. Searching or filtering opens matching groups automatically.
 - **Permissions in the UI:** forms live in `.wr` cards and are hidden when `canWrite` is false. Settings and the restaurant margin need `canCfg` (Editor/owner).
 
 ## Business data

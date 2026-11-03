@@ -72,6 +72,12 @@ textarea{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radiu
 .qk>button{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:8px;padding-right:8px}
 @media (max-width:620px){.qk{grid-template-columns:repeat(2,minmax(0,1fr))}.qk>:first-child{grid-column:1/-1}}
 .hint.row2{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.gbtn{width:100%;background:transparent;color:var(--muted);border:0;border-bottom:1px solid var(--line);border-radius:0;min-height:44px;padding:12px 0 6px;font:inherit;font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:left;cursor:pointer}
+.gbtn:hover{color:var(--text)}.gbtn .tag{text-transform:none;letter-spacing:0;margin-left:4px}
+.gbtn .chev{display:inline-block;width:1.1em}
+.sbh{font-size:.78rem;font-weight:600;color:var(--accent);padding:10px 0 2px}
+.sbh+.row{border-top:0}
+.fbar{display:flex;justify-content:flex-end;gap:4px;margin:-4px 0 4px}
 .qs{width:auto;height:34px;padding:4px 8px;font-size:.85rem}
 button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:var(--accent-t);font-weight:600;min-height:42px}
 button:disabled{opacity:.55;cursor:default}
@@ -216,7 +222,7 @@ th{color:var(--muted);font-weight:600}
 
   <section id="food" class="hide">
     <div class="seg seg6" id="ftabs">
-      <button data-f="stock" class="on">Склад</button>
+      <button data-f="stock" class="on">Залишки</button>
       <button data-f="in">Надходження</button>
       <button data-f="prep">Використання</button>
       <button data-f="count">Інвентаризація</button>
@@ -232,8 +238,9 @@ th{color:var(--muted);font-weight:600}
 
     <div id="f-stock">
       <div class="card">
-        <div class="head"><h2>Склад</h2><div class="ctl"><input type="search" id="isearch" placeholder="Пошук"><select id="igf"></select></div></div>
+        <div class="head"><h2>Залишки на складі</h2><div class="ctl"><input type="search" id="isearch" placeholder="Пошук товару"><select id="igf"></select></div></div>
         <div id="catbar"></div>
+        <div class="fbar" id="foldbar"></div>
         <div id="ilist"></div>
       </div>
       <div class="card wr" id="icard">
@@ -774,7 +781,7 @@ th{color:var(--muted);font-weight:600}
   function isLow(x){return x.par>0&&onHand(x.id)<x.par}
   function itemsOf(r){return S.I.filter(function(x){return x.r===r}).sort(function(a,b){return a.name.localeCompare(b.name,LOC)})}
   function mval(m){return m.qty*(m.cost||0)}
-  function itemOpts(items){return items.length?items.map(function(x){return '<option value="'+esc(x.id)+'">'+esc(x.name)+' ('+esc(x.unit)+') — в наявності '+fq(onHand(x.id))+'</option>'}).join(''):'<option value="">Спершу додайте товар у «Склад»</option>'}
+  function itemOpts(items){return items.length?items.map(function(x){return '<option value="'+esc(x.id)+'">'+esc(x.name)+' ('+esc(x.unit)+') — в наявності '+fq(onHand(x.id))+'</option>'}).join(''):'<option value="">Спершу додайте товар у «Залишки»</option>'}
   $('igrp').innerHTML=opts(Object.keys(FG).map(function(k){return [k,FG[k][0]]}));
   $('igf').innerHTML='<option value="all">Усі групи</option>'+opts(Object.keys(FG).map(function(k){return [k,FG[k][0]]}));
   $('iunit').innerHTML=opts(UNITS);
@@ -793,6 +800,10 @@ th{color:var(--muted);font-weight:600}
     if(FT==='count')renderCount(items);
     if(FT==='price')renderPrice(items);
   }
+  var FO={};try{FO=JSON.parse(localStorage.getItem('project369-fold')||'{}')||{}}catch(e){}
+  function saveFO(){try{localStorage.setItem('project369-fold',JSON.stringify(FO))}catch(e){}}
+  function fOpen(k,def){return k in FO?!!FO[k]:def}
+  function gHead(k,open,title,right){return '<button type="button" class="grp gbtn" data-fk="'+k+'" aria-expanded="'+open+'"><span><span class="chev">'+(open?'▾':'▸')+'</span>'+title+'</span><span>'+right+'</span></button>'}
   function catMissing(items){var have={};items.forEach(function(x){have[x.name.toLowerCase()]=1});return S.G.filter(function(g){return !have[String(g.name).toLowerCase()]})}
   function renderStock(items){
     var miss=catMissing(items);
@@ -803,17 +814,24 @@ th{color:var(--muted);font-weight:600}
     Object.keys(FG).forEach(function(g){
       var its=shown.filter(function(x){return x.grp===g});if(!its.length)return;
       var gv=its.reduce(function(t,x){return t+Math.max(0,onHand(x.id))*x.cost},0);
-      html+='<div class="grp"><span>'+esc(FG[g][0])+' · '+its.length+'</span><span>'+money(gv)+'</span></div>';
+      var forced=!!sq||gf!=='all',open=forced||fOpen('s:'+g,items.length<=12),low=its.filter(isLow).length,np=its.filter(function(x){return !(x.cost>0)}).length;
+      html+=gHead('s:'+g,open,esc(FG[g][0])+' · '+its.length+(low?' <span class="tag bad">нижче норми: '+low+'</span>':'')+(np&&!open?' <span class="tag">без ціни: '+np+'</span>':''),money(gv));
+      if(!open)return;
+      var multi=its.reduce(function(o,x){o[x.sub||'']=1;return o},{});multi=Object.keys(multi).length>1;var lastSub=null;
+      if(multi)its=its.slice().sort(function(a,b){return (a.sub||'яяя').localeCompare(b.sub||'яяя',LOC)||a.name.localeCompare(b.name,LOC)});
       html+=its.map(function(x){
+        var sh='';if(multi&&(x.sub||'')!==lastSub){lastSub=x.sub||'';sh='<div class="sbh">'+esc(lastSub||'Інше')+'</div>'}
         var h=onHand(x.id),det='';
         if(OPEN[x.id]){
           var mv=S.V.filter(function(m){return m.s===x.id}).sort(function(a,b){return (b.date+(b.at||'')).localeCompare(a.date+(a.at||''))}).slice(0,15);
           det='<div class="detail">'+(mv.length?mv.map(function(m){return '<div class="row"><div><b>'+esc(VERB[m.type])+' '+fq(m.qty)+' '+esc(x.unit)+'</b><div class="m">'+esc(m.date)+(m.type==='in'?' · '+money(m.cost)+'/'+esc(x.unit):'')+(m.note?' · '+esc(m.note):'')+'</div></div>'+(canWrite?'<button class="ghost" data-vd="'+esc(m.id)+'" aria-label="Видалити">✕</button>':'')+'</div>'}).join(''):'<div class="empty">Ще немає руху.</div>')+'</div>';
         }
-        return '<div class="row"><div><b>'+esc(x.name)+'</b> '+(isLow(x)?'<span class="tag bad">Нижче норми</span>':'')+'<div class="m">'+(x.sub?esc(x.sub)+' · ':'')+(x.cost>0?money(x.cost)+'/'+esc(x.unit):'<span class="bad">ціна ще невідома</span>')+(x.par?' · мін. '+fq(x.par):'')+(x.supplier?' · '+esc(x.supplier):'')+'</div></div><div class="acts"><span class="amt'+(h<0?' bad':'')+'">'+fq(h)+' '+esc(x.unit)+'</span><div class="m">'+money(Math.max(0,h)*x.cost)+'</div><button class="ghost" data-x="'+esc(x.id)+'" title="Рух товару" aria-label="Рух товару">🕘</button>'+editBtns('ie','id',x.id)+'</div></div>'+det;
+        return sh+'<div class="row"><div><b>'+esc(x.name)+'</b> '+(isLow(x)?'<span class="tag bad">Нижче норми</span>':'')+'<div class="m">'+(x.sub&&!multi?esc(x.sub)+' · ':'')+(x.cost>0?money(x.cost)+'/'+esc(x.unit):'<span class="bad">ціну не вказано</span>')+(x.par?' · мін. '+fq(x.par):'')+(x.supplier?' · '+esc(x.supplier):'')+'</div></div><div class="acts"><span class="m">залишок </span><span class="amt'+(h<0?' bad':'')+'">'+fq(h)+' '+esc(x.unit)+'</span><div class="m">'+money(Math.max(0,h)*x.cost)+'</div><button class="ghost" data-x="'+esc(x.id)+'" title="Рух товару" aria-label="Рух товару">🕘</button>'+editBtns('ie','id',x.id)+'</div></div>'+det;
       }).join('');
     });
     $('ilist').innerHTML=html||'<div class="empty">'+(items.length?'Нічого не знайдено.':'Ще немає товарів. Додайте перший у формі нижче.')+'</div>';
+    var ng=Object.keys(FG).filter(function(g){return shown.some(function(x){return x.grp===g})}).length;
+    $('foldbar').innerHTML=ng>1&&!sq&&gf==='all'?'<button type="button" class="ghost" data-fall="1">Розгорнути все</button><button type="button" class="ghost" data-fall="0">Згорнути все</button>':'';
   }
   function renderIn(items){
     var vi=$('vitem'),vv=vi.value;vi.innerHTML=itemOpts(items);if(vv&&find(items,vv))vi.value=vv;
@@ -918,7 +936,9 @@ th{color:var(--muted);font-weight:600}
     }).then(endEditI).catch(function(err){fail('imsg',err)});
   });
   function moveClick(e,msg){var id=e.target.getAttribute('data-vd');if(id)removeItem('move',id).catch(function(err){fail(msg,err)});return !!id}
+  $('foldbar').addEventListener('click',function(e){var v=e.target.getAttribute('data-fall');if(v==null)return;Object.keys(FG).forEach(function(g){FO['s:'+g]=v==='1'});saveFO();renderFood()});
   $('ilist').addEventListener('click',function(e){
+    var fk=e.target.closest&&e.target.closest('[data-fk]');if(fk){var k=fk.getAttribute('data-fk');FO[k]=fk.getAttribute('aria-expanded')!=='true';saveFO();renderFood();return}
     var t=e.target,id;
     if((id=t.getAttribute('data-x'))){OPEN[id]=!OPEN[id];return renderFood()}
     if((id=t.getAttribute('data-ie')))return startEditI(id);
@@ -942,12 +962,15 @@ th{color:var(--muted);font-weight:600}
   function cStats(items,exp){var n=0,sh=0,ov=0;items.forEach(function(x){var v=CV[x.id];if(v==null||v===''||isNaN(parseFloat(v)))return;n++;var d=(parseFloat(v)-(exp[x.id]||0))*x.cost;if(d<0)sh+=d;else ov+=d});$('cN').textContent=n;$('cShort').textContent=money(sh);$('cShort').className=sh<0?'bad':'';$('cOver').textContent=money(ov);$('csave').disabled=!n}
   function renderCount(items){
     var date=$('cdate').value||today(),exp=stockAt(date),ae=document.activeElement;
-    if(!(ae&&$('csheet').contains(ae))){
+    if(!(ae&&ae.tagName==='INPUT'&&$('csheet').contains(ae))){
       var html='';
       Object.keys(FG).forEach(function(g){var its=items.filter(function(x){return x.grp===g});if(!its.length)return;
-        html+='<div class="grp"><span>'+esc(FG[g][0])+'</span><span></span></div>'+its.map(function(x){return '<div class="crow"><div><b>'+esc(x.name)+'</b><div class="m" data-cd="'+esc(x.id)+'">'+cDiff(x,exp)+'</div></div><input type="number" step="any" min="0" inputmode="decimal" data-cv="'+esc(x.id)+'" value="'+(CV[x.id]!=null?esc(CV[x.id]):'')+'" placeholder="факт, '+esc(x.unit)+'" aria-label="Фактично: '+esc(x.name)+'"'+(canWrite?'':' disabled')+'></div>'}).join('');
+        var done=its.filter(function(x){var v=CV[x.id];return v!=null&&v!==''&&!isNaN(parseFloat(v))}).length,open=fOpen('c:'+g,items.length<=12);
+        html+=gHead('c:'+g,open,esc(FG[g][0])+' · '+its.length,'пораховано '+done+'/'+its.length);
+        if(!open)return;
+        html+=its.map(function(x){return '<div class="crow"><div><b>'+esc(x.name)+'</b><div class="m" data-cd="'+esc(x.id)+'">'+cDiff(x,exp)+'</div></div><input type="number" step="any" min="0" inputmode="decimal" data-cv="'+esc(x.id)+'" value="'+(CV[x.id]!=null?esc(CV[x.id]):'')+'" placeholder="факт, '+esc(x.unit)+'" aria-label="Фактично: '+esc(x.name)+'"'+(canWrite?'':' disabled')+'></div>'}).join('');
       });
-      $('csheet').innerHTML=html||'<div class="empty">Спершу додайте товари у «Склад».</div>';
+      $('csheet').innerHTML=html||'<div class="empty">Спершу додайте товари у «Залишки».</div>';
     }
     cStats(items,exp);
     var cs=S.C.filter(function(c){return c.r===R}).sort(function(a,b){return (b.date+b.at).localeCompare(a.date+a.at)});
@@ -957,6 +980,7 @@ th{color:var(--muted);font-weight:600}
       return '<div class="row"><div><b>'+esc(longD(c.date))+'</b><div class="m">'+(c.lines||[]).length+' позицій · '+esc(who(c.who))+'</div></div><div class="acts"><span class="amt '+(c.short<0?'bad':'')+'">'+money(c.short)+'</span><div class="m">надлишок '+money(c.over)+'</div><button class="ghost" data-co="'+esc(c.id)+'" aria-label="Деталі">'+(OPENC[c.id]?'▴ деталі':'▾ деталі')+'</button>'+(canWrite?'<button class="ghost" data-cx="'+esc(c.id)+'" aria-label="Видалити" title="Видалити інвентаризацію">✕</button>':'')+'</div></div>'+det}).join(''):'<div class="empty">Ще не було інвентаризацій.</div>';
   }
   $('cdate').addEventListener('change',function(){$('csheet').innerHTML='';renderFood()});
+  $('csheet').addEventListener('click',function(e){var fk=e.target.closest&&e.target.closest('[data-fk]');if(!fk)return;FO[fk.getAttribute('data-fk')]=fk.getAttribute('aria-expanded')!=='true';saveFO();renderFood()});
   $('csheet').addEventListener('input',function(e){var id=e.target.getAttribute('data-cv');if(!id)return;CV[id]=e.target.value;var x=find(S.I,id),exp=stockAt($('cdate').value||today());var el=$('csheet').querySelector('[data-cd="'+id+'"]');if(x&&el)el.innerHTML=cDiff(x,exp);cStats(itemsOf(R),exp)});
   $('csave').addEventListener('click',function(){
     if(R==='all')return;var date=$('cdate').value||today(),exp=stockAt(date),at=new Date().toISOString();
@@ -992,7 +1016,7 @@ th{color:var(--muted);font-weight:600}
       win.forEach(function(m){if(m.sup)sup[m.sup]=m.cost});
       var best=null;Object.keys(sup).forEach(function(k){if(k!==(i.last.sup||'')&&sup[k]<i.last.cost&&(!best||sup[k]<best[1]))best=[k,sup[k]]});
       return '<div class="row"><div><b>'+esc(x.name)+'</b><div class="m">остання '+money(i.last.cost)+'/'+esc(x.unit)+' · '+esc(short(pd(i.last.date)))+(i.last.sup?' · '+esc(i.last.sup):'')+(i.prev?' · попередня '+money(i.prev.cost):'')+'</div>'+(cs.length>1?'<div class="m">за '+days+' дн.: мін. '+money(Math.min.apply(null,cs))+' · макс. '+money(Math.max.apply(null,cs))+' · закупівель '+cs.length+'</div>':'')+(best?'<div class="m ok">дешевше: '+esc(best[0])+' — '+money(best[1])+'/'+esc(x.unit)+'</div>':'')+'</div><div class="acts">'+pTag(i.ch)+'</div></div>';
-    }).join(''):'<div class="empty">Спершу додайте товари у «Склад».</div>';
+    }).join(''):'<div class="empty">Спершу додайте товари у «Залишки».</div>';
   }
   $('pperiod').addEventListener('change',renderFood);
 
@@ -1355,7 +1379,7 @@ th{color:var(--muted);font-weight:600}
     })});
     chain.then(function(){
       $('rpbody').classList.add('hide');$('rplist').innerHTML='';
-      $('rpstatus').innerHTML='<span class="ok">✓ Збережено рецептів: '+(nU+nN)+(nU?' (оновлено страв у меню: '+nU+')':'')+(nN?' · нових страв: '+nN:'')+(newList.length?' · нових продуктів на складі: '+newList.length:'')+'</span>'+(newList.length?'<br><span class="m">Вкажіть ціни нових продуктів у «Продукти → Склад» або вони підтягнуться з першої поставки чи чека.</span>':'');
+      $('rpstatus').innerHTML='<span class="ok">✓ Збережено рецептів: '+(nU+nN)+(nU?' (оновлено страв у меню: '+nU+')':'')+(nN?' · нових страв: '+nN:'')+(newList.length?' · нових продуктів на складі: '+newList.length:'')+'</span>'+(newList.length?'<br><span class="m">Вкажіть ціни нових продуктів у «Продукти → Залишки» або вони підтягнуться з першої поставки чи чека.</span>':'');
     }).catch(function(err){fail('rpmsg',err)}).then(function(){btn.disabled=false});
   });
 
@@ -1372,7 +1396,7 @@ th{color:var(--muted);font-weight:600}
   function setIng(list){$('inglist').innerHTML=(list||[]).map(ingRow).join('');ingCost()}
   function readIng(){var out=[];each($('inglist').children,function(d){var s=d.querySelector('[data-is]').value,qv=parseFloat(d.querySelector('[data-iq]').value);if(s&&qv>0)out.push({s:s,q:qv})});return out}
   function ingCost(){var ing=readIng();$('mcost').readOnly=!!ing.length;if(ing.length)$('mcost').value=recipeCost(ing).toFixed(2)}
-  $('ingadd').addEventListener('click',function(){if(!itemsOf(R).length){$('mmsg').textContent='Спершу додайте товари в «Продукти → Склад».';return}$('inglist').insertAdjacentHTML('beforeend',ingRow(null))});
+  $('ingadd').addEventListener('click',function(){if(!itemsOf(R).length){$('mmsg').textContent='Спершу додайте товари в «Продукти → Залишки».';return}$('inglist').insertAdjacentHTML('beforeend',ingRow(null))});
   $('inglist').addEventListener('input',ingCost);$('inglist').addEventListener('change',ingCost);
   $('inglist').addEventListener('click',function(e){if(e.target.hasAttribute('data-ix')){e.target.parentNode.remove();ingCost()}});
   function renderMenu(){
